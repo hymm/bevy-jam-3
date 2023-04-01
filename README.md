@@ -1,3 +1,7 @@
+# Bevy Jam 3 - Spinny Gravity
+
+My entry for bevy jam 3.
+
 # Bevy GitHub CI Template
 
 This repo show how to set up CI on a GitHub project for Bevy.
