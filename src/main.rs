@@ -3,13 +3,23 @@
 mod physics;
 
 use bevy::{prelude::*, sprite::Anchor};
+use bevy_rapier2d::prelude::*;
 use leafwing_input_manager::prelude::*;
-use physics::{GravityDirection, PhysicsPlugin, Velocity};
+use physics::{GravityDirection, Ground, JumpState, PhysicsPlugin, Velocity};
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(PhysicsPlugin)
+        .insert_resource(RapierConfiguration {
+            timestep_mode: TimestepMode::Fixed {
+                dt: 1. / 60.,
+                substeps: 1,
+            },
+            ..Default::default()
+        })
+        .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.))
+        .add_plugin(RapierDebugRenderPlugin::default())
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .add_startup_system(setup)
         .add_startup_system(spawn_player)
@@ -56,11 +66,11 @@ fn spawn_player(mut commands: Commands) {
         },
         Velocity::default(),
         GravityDirection::Down,
+        JumpState { on_ground: true },
+        Collider::cuboid(10., 15.),
+        Sensor,
     ));
 }
-
-#[derive(Component)]
-struct Ground;
 
 fn spawn_ground(mut commands: Commands) {
     // bottom
@@ -75,6 +85,8 @@ fn spawn_ground(mut commands: Commands) {
             transform: Transform::from_xyz(0.0, -300.0, 0.0),
             ..default()
         },
+        Collider::cuboid(300., 10.),
+        Sensor,
     ));
 
     // top
@@ -89,6 +101,8 @@ fn spawn_ground(mut commands: Commands) {
             transform: Transform::from_xyz(0.0, 300.0, 0.0),
             ..default()
         },
+        Collider::cuboid(300., 10.),
+        Sensor,
     ));
 
     // left
@@ -103,6 +117,8 @@ fn spawn_ground(mut commands: Commands) {
             transform: Transform::from_xyz(300.0, 0.0, 0.0),
             ..default()
         },
+        Collider::cuboid(10., 300.),
+        Sensor,
     ));
 
     // right
@@ -117,5 +133,7 @@ fn spawn_ground(mut commands: Commands) {
             transform: Transform::from_xyz(-300.0, 0.0, 0.0),
             ..default()
         },
+        Collider::cuboid(10., 300.),
+        Sensor,
     ));
 }
