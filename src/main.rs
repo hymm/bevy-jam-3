@@ -5,7 +5,9 @@ mod physics;
 use bevy::{prelude::*, sprite::Anchor};
 use bevy_rapier2d::prelude::*;
 use leafwing_input_manager::prelude::*;
-use physics::{GravityDirection, Ground, JumpState, PhysicsPlugin, PhysicsSet, Velocity};
+use physics::{
+    Acceleration, Gravity, GravityDirection, Ground, JumpState, PhysicsPlugin, Velocity,
+};
 
 fn main() {
     App::new()
@@ -53,6 +55,7 @@ struct Player;
 
 fn spawn_player(mut commands: Commands) {
     commands.spawn((
+        Player,
         InputManagerBundle::<JumpAction> {
             action_state: ActionState::default(),
             input_map: InputMap::new([(KeyCode::Space, JumpAction::Jump)]),
@@ -66,17 +69,19 @@ fn spawn_player(mut commands: Commands) {
                 (KeyCode::S, MovementAction::Down),
             ]),
         },
-        Player,
         SpriteBundle {
             sprite: Sprite {
                 custom_size: Some(Vec2::new(20., 30.)),
                 color: Color::rgb(0.0, 0.7, 0.7),
                 ..default()
             },
+            transform: Transform::from_xyz(0.0, -250., 0.),
             ..default()
         },
         Velocity::default(),
+        Acceleration::default(),
         GravityDirection::Down,
+        Gravity(50.0),
         JumpState { on_ground: true },
         Collider::cuboid(10., 15.),
         Sensor,
@@ -87,12 +92,15 @@ fn control_jump(
     mut q: Query<(
         &mut Velocity,
         &mut JumpState,
+        &mut Gravity,
         &GravityDirection,
         &ActionState<JumpAction>,
     )>,
 ) {
-    const INITIAL_JUMP_SPEED: f32 = 300.0;
-    for (mut v, mut jump_state, g_dir, action_state) in q.iter_mut() {
+    const INITIAL_JUMP_SPEED: f32 = 400.0;
+    const GRAVITY_PRESSED: f32 = 40.0;
+    const GRAVITY_UNPRESSED: f32 = 80.0;
+    for (mut v, mut jump_state, mut g, g_dir, action_state) in q.iter_mut() {
         if action_state.just_pressed(JumpAction::Jump) {
             if !jump_state.on_ground {
                 return;
@@ -100,10 +108,22 @@ fn control_jump(
             v.0 -= INITIAL_JUMP_SPEED * g_dir.as_vec2();
             jump_state.on_ground = false;
         }
+
+        g.0 = if action_state.pressed(JumpAction::Jump) {
+            GRAVITY_PRESSED
+        } else {
+            GRAVITY_UNPRESSED
+        }
     }
 }
 
-fn control_movement(mut q: Query<(&mut Velocity, &ActionState<MovementAction>, &GravityDirection)>) {
+fn control_movement(
+    mut q: Query<(
+        &mut Velocity,
+        &ActionState<MovementAction>,
+        &GravityDirection,
+    )>,
+) {
     const HORIZONTAL_SPEED: f32 = 200.0;
     for (mut v, action, dir) in &mut q {
         let mut temp_v = Vec2::ZERO;
@@ -143,6 +163,22 @@ fn spawn_ground(mut commands: Commands) {
             ..default()
         },
         Collider::cuboid(300., 10.),
+        Sensor,
+    ));
+
+    // a platform
+    commands.spawn((
+        Ground,
+        SpriteBundle {
+            sprite: Sprite {
+                custom_size: Some(Vec2::new(50., 20.)),
+                anchor: Anchor::Center,
+                ..default()
+            },
+            transform: Transform::from_xyz(100.0, -220.0, 0.0),
+            ..default()
+        },
+        Collider::cuboid(25., 10.),
         Sensor,
     ));
 
