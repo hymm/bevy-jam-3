@@ -66,7 +66,7 @@ fn spawn_player(mut commands: Commands) {
             input_map: InputMap::new([
                 (KeyCode::A, MovementAction::Left),
                 (KeyCode::D, MovementAction::Right),
-                (KeyCode::Q, MovementAction::Up),
+                (KeyCode::W, MovementAction::Up),
                 (KeyCode::S, MovementAction::Down),
             ]),
         },
@@ -85,6 +85,7 @@ fn spawn_player(mut commands: Commands) {
         Gravity(50.0),
         JumpState {
             on_ground: true,
+            turned_this_jump: false,
             last_horizontal_movement_dir: Direction::Left,
             last_vertical_movement_dir: Direction::Down,
         },
@@ -112,6 +113,7 @@ fn control_jump(
             }
             v.0 -= INITIAL_JUMP_SPEED * g_dir.as_vec2();
             jump_state.on_ground = false;
+            jump_state.turned_this_jump = false;
         }
 
         g.0 = if action_state.pressed(JumpAction::Jump) {

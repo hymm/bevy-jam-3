@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::{QueryFilter, RapierContext};
 
@@ -6,7 +8,7 @@ impl Plugin for PhysicsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             (
-                // rotate_gravity,
+                rotate_gravity,
                 ground_detection,
                 apply_gravity,
                 apply_acceleration,
@@ -29,7 +31,7 @@ pub struct Gravity(pub f32);
 #[derive(Component)]
 pub struct Ground;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
     Up,
     Down,
@@ -101,6 +103,7 @@ pub struct Acceleration(pub Vec2);
 #[derive(Component)]
 pub struct JumpState {
     pub on_ground: bool,
+    pub turned_this_jump: bool,
     pub last_horizontal_movement_dir: Direction,
     pub last_vertical_movement_dir: Direction,
 }
@@ -116,8 +119,8 @@ fn apply_gravity(
 ) {
     for (mut a, mut v, dir, gravity, jump_state) in q.iter_mut() {
         if jump_state.on_ground {
-            // zero velocity in gravity direction. probably need to add some thresholds here too.
-            v.0 = v.0 + v.0 * dir.as_vec2();
+            // zero velocity in gravity direction.
+            v.0 *= dir.forward().as_vec2().abs();
             a.0 *= dir.forward().as_vec2().abs();
             continue;
         }
@@ -220,13 +223,15 @@ fn rotate_gravity(
 
         if current_v_direction != jump_state.last_vertical_movement_dir
             && current_v_direction == g_dir.0
+            && !jump_state.turned_this_jump
         {
             a.0 = Vec2::ZERO;
+            jump_state.turned_this_jump = true;
             g_dir.0 = if current_h_direction == g_dir.forward() {
-                t.rotate_z(90.);
+                t.rotate_z(PI / 2.);
                 g_dir.cw()
             } else {
-                t.rotate_z(-90.);
+                t.rotate_z(-PI / 2.);
                 g_dir.ccw()
             };
         }
