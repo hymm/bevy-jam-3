@@ -6,6 +6,7 @@ impl Plugin for PhysicsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             (
+                // rotate_gravity,
                 ground_detection,
                 apply_gravity,
                 apply_acceleration,
@@ -21,16 +22,6 @@ impl Plugin for PhysicsPlugin {
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct PhysicsSet;
 
-/// Direction gravity applies to for a specific object,
-/// Note: might be better for this to be a vector instead?
-#[derive(Component)]
-pub enum GravityDirection {
-    Up,
-    Down,
-    Left,
-    Right,
-}
-
 #[derive(Component)]
 pub struct Gravity(pub f32);
 
@@ -38,22 +29,65 @@ pub struct Gravity(pub f32);
 #[derive(Component)]
 pub struct Ground;
 
-impl GravityDirection {
-    pub fn as_vec2(&self) -> Vec2 {
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+impl Direction {
+    pub fn reverse(&self) -> Direction {
         match self {
-            GravityDirection::Down => Vec2::NEG_Y,
-            GravityDirection::Up => Vec2::Y,
-            GravityDirection::Left => Vec2::NEG_X,
-            GravityDirection::Right => Vec2::X,
+            Direction::Down => Direction::Up,
+            Direction::Up => Direction::Down,
+            Direction::Left => Direction::Right,
+            Direction::Right => Direction::Left,
         }
     }
 
-    pub fn forward(&self) -> Vec2 {
+    pub fn as_vec2(&self) -> Vec2 {
         match self {
-            GravityDirection::Down => Vec2::X,
-            GravityDirection::Up => Vec2::NEG_X,
-            GravityDirection::Left => Vec2::Y,
-            GravityDirection::Right => Vec2::NEG_Y,
+            Direction::Down => Vec2::NEG_Y,
+            Direction::Up => Vec2::Y,
+            Direction::Left => Vec2::NEG_X,
+            Direction::Right => Vec2::X,
+        }
+    }
+
+    // rotate 90deg counter clockwise
+    pub fn ccw(&self) -> Direction {
+        match self {
+            Direction::Down => Direction::Right,
+            Direction::Up => Direction::Left,
+            Direction::Left => Direction::Down,
+            Direction::Right => Direction::Up,
+        }
+    }
+
+    // rotate 90deg clockwise
+    pub fn cw(&self) -> Direction {
+        match self {
+            Direction::Down => Direction::Left,
+            Direction::Up => Direction::Right,
+            Direction::Left => Direction::Up,
+            Direction::Right => Direction::Down,
+        }
+    }
+}
+
+/// Direction gravity applies to for a specific object,
+/// Note: might be better for this to be a vector instead?
+#[derive(Component, Deref, DerefMut)]
+pub struct GravityDirection(pub Direction);
+impl GravityDirection {
+    pub fn forward(&self) -> Direction {
+        match self.0 {
+            Direction::Down => Direction::Left,
+            Direction::Up => Direction::Right,
+            Direction::Left => Direction::Up,
+            Direction::Right => Direction::Down,
         }
     }
 }
@@ -67,6 +101,8 @@ pub struct Acceleration(pub Vec2);
 #[derive(Component)]
 pub struct JumpState {
     pub on_ground: bool,
+    pub last_horizontal_movement_dir: Direction,
+    pub last_vertical_movement_dir: Direction,
 }
 
 fn apply_gravity(
@@ -82,7 +118,7 @@ fn apply_gravity(
         if jump_state.on_ground {
             // zero velocity in gravity direction. probably need to add some thresholds here too.
             v.0 = v.0 + v.0 * dir.as_vec2();
-            a.0 *= dir.forward().abs();
+            a.0 *= dir.forward().as_vec2().abs();
             continue;
         }
 
@@ -107,11 +143,11 @@ fn apply_acceleration(mut q: Query<(&mut Velocity, &Acceleration)>, time_step: R
 fn ground_detection(
     mut jumpers: Query<
         (
+            Entity,
             &mut JumpState,
             &Velocity,
-            &Transform,
+            &mut Transform,
             &GravityDirection,
-            &Sprite,
         ),
         Without<Ground>,
     >,
@@ -119,35 +155,83 @@ fn ground_detection(
     rapier: Res<RapierContext>,
     time: Res<FixedTime>,
 ) {
-    for (mut j, v, t, g, s) in &mut jumpers {
+    let character_height = 30.0;
+    for (e, mut j, v, mut t, g) in &mut jumpers {
         // only check ground detection when moving in the same direction as gravity
         if g.as_vec2().dot(v.0) < 0.0 {
             continue;
         }
-        let Some(sprite_size) = s.custom_size else { panic!("cannot get size of sprite") };
         // left ray when gravity is down
-        let ray_origin_1 = t.translation.truncate() - sprite_size / 2.;
+        let ray_origin_1 = t.translation.truncate();
         let result = rapier.cast_ray_and_get_normal(
             ray_origin_1,
             g.as_vec2(),
-            15.0,
+            character_height / 2. + 14.,
             false,
-            QueryFilter::default(),
+            QueryFilter::default().exclude_collider(e),
         );
 
         if let Some((entity, intersect)) = result {
             let speed = g.as_vec2().dot(v.0);
 
-            if speed == 0. {
-                return;
-            }
-            let something = intersect.toi / speed;
+            // if speed == 0. {
+            //     return;
+            // }
+            // toi from rapier seems to be in pixels, so we convert
+            let toi = (intersect.toi - character_height / 2.) / speed;
 
-            if grounds.contains(entity) && something < time.period.as_secs_f32() {
+            if grounds.contains(entity) && toi < time.period.as_secs_f32() {
+                t.translation += g.as_vec2().extend(0.0) * (intersect.toi - character_height / 2.);
                 j.on_ground = true;
             }
         } else {
             j.on_ground = false;
         }
+    }
+}
+
+fn rotate_gravity(
+    mut q: Query<(
+        &mut GravityDirection,
+        &mut JumpState,
+        &mut Acceleration,
+        &mut Transform,
+        &Velocity,
+    )>,
+) {
+    for (mut g_dir, mut jump_state, mut a, mut t, v) in &mut q {
+        let v_speed = g_dir.as_vec2().dot(v.0);
+        let current_v_direction = if v_speed > 0.0 {
+            g_dir.0
+        } else if v_speed < 0.0 {
+            g_dir.0.reverse()
+        } else {
+            jump_state.last_vertical_movement_dir
+        };
+
+        let h_speed = g_dir.forward().as_vec2().dot(v.0);
+        let current_h_direction = if h_speed > 0.0 {
+            g_dir.forward()
+        } else if h_speed < 0.0 {
+            g_dir.forward().reverse()
+        } else {
+            jump_state.last_horizontal_movement_dir
+        };
+
+        if current_v_direction != jump_state.last_vertical_movement_dir
+            && current_v_direction == g_dir.0
+        {
+            a.0 = Vec2::ZERO;
+            g_dir.0 = if current_h_direction == g_dir.forward() {
+                t.rotate_z(90.);
+                g_dir.cw()
+            } else {
+                t.rotate_z(-90.);
+                g_dir.ccw()
+            };
+        }
+
+        jump_state.last_horizontal_movement_dir = current_h_direction;
+        jump_state.last_vertical_movement_dir = current_v_direction;
     }
 }

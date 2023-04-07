@@ -6,7 +6,7 @@ use bevy::{prelude::*, sprite::Anchor};
 use bevy_rapier2d::prelude::*;
 use leafwing_input_manager::prelude::*;
 use physics::{
-    Acceleration, Gravity, GravityDirection, Ground, JumpState, PhysicsPlugin, Velocity,
+    Acceleration, Direction, Gravity, GravityDirection, Ground, JumpState, PhysicsPlugin, Velocity,
 };
 
 fn main() {
@@ -30,6 +30,7 @@ fn main() {
         .add_startup_system(spawn_ground)
         .add_system(control_jump)
         .add_system(control_movement)
+        .add_system(player_dies)
         .run();
 }
 
@@ -80,9 +81,13 @@ fn spawn_player(mut commands: Commands) {
         },
         Velocity::default(),
         Acceleration::default(),
-        GravityDirection::Down,
+        GravityDirection(Direction::Down),
         Gravity(50.0),
-        JumpState { on_ground: true },
+        JumpState {
+            on_ground: true,
+            last_horizontal_movement_dir: Direction::Left,
+            last_vertical_movement_dir: Direction::Down,
+        },
         Collider::cuboid(10., 15.),
         Sensor,
     ));
@@ -140,11 +145,20 @@ fn control_movement(
             temp_v.x += 1.0;
         }
 
-        let val = dir.forward().dot(temp_v);
+        let val = dir.forward().as_vec2().dot(temp_v);
         if val != 0.0 {
-            v.0 = v.0 * dir.as_vec2().abs() + (dir.forward() * val).normalize() * HORIZONTAL_SPEED;
+            v.0 = v.0 * dir.as_vec2().abs()
+                + (dir.forward().as_vec2() * val).normalize() * HORIZONTAL_SPEED;
         } else {
             v.0 *= dir.as_vec2().abs();
+        }
+    }
+}
+
+fn player_dies(q: Query<(Entity, &Transform), With<Player>>, mut commands: Commands) {
+    for (e, t) in &q {
+        if t.translation.y < -500. {
+            commands.entity(e).despawn();
         }
     }
 }
