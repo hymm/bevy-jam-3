@@ -187,14 +187,14 @@ fn spawn_ground(mut commands: Commands) {
         Ground,
         SpriteBundle {
             sprite: Sprite {
-                custom_size: Some(Vec2::new(50., 20.)),
+                custom_size: Some(Vec2::new(40., 40.)),
                 anchor: Anchor::Center,
                 ..default()
             },
-            transform: Transform::from_xyz(100.0, -220.0, 0.0),
+            transform: Transform::from_xyz(100.0, -180.0, 0.0),
             ..default()
         },
-        Collider::cuboid(25., 10.),
+        Collider::cuboid(20., 20.),
         Sensor,
     ));
 

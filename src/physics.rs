@@ -13,6 +13,8 @@ impl Plugin for PhysicsPlugin {
                 apply_gravity,
                 apply_acceleration,
                 apply_velocity,
+                top_collision_detection,
+                side_collision_detection,
             )
                 .chain()
                 .in_set(PhysicsSet)
@@ -189,6 +191,82 @@ fn ground_detection(
             }
         } else {
             j.on_ground = false;
+        }
+    }
+}
+
+fn side_collision_detection(
+    mut movers: Query<
+        (Entity, &Velocity, &mut Transform, &GravityDirection),
+        (With<JumpState>, Without<Ground>),
+    >,
+    grounds: Query<Entity, With<Ground>>,
+    rapier: Res<RapierContext>,
+    time: Res<FixedTime>,
+) {
+    let character_width: f32 = 20.;
+    for (e, v, mut t, g) in &mut movers {
+        let h_move_vec =
+            (g.forward().as_vec2().dot(v.0) * g.forward().as_vec2()).normalize_or_zero();
+
+        // left ray when gravity is down
+        let ray_origin_1 = t.translation.truncate();
+        let result = rapier.cast_ray_and_get_normal(
+            ray_origin_1,
+            h_move_vec,
+            character_width / 2. + 14.,
+            false,
+            QueryFilter::default().exclude_collider(e),
+        );
+
+        if let Some((entity, intersect)) = result {
+            let speed = h_move_vec.dot(v.0);
+
+            // if speed == 0. {
+            //     return;
+            // }
+            // toi from rapier seems to be in pixels, so we convert
+            let toi = (intersect.toi - character_width / 2.) / speed;
+
+            if grounds.contains(entity) && toi < time.period.as_secs_f32() {
+                t.translation += h_move_vec.extend(0.0) * (intersect.toi - character_width / 2.);
+            }
+        }
+    }
+}
+
+fn top_collision_detection(
+    mut movers: Query<
+        (Entity, &mut Velocity, &mut Transform, &GravityDirection),
+        (With<JumpState>, Without<Ground>),
+    >,
+    grounds: Query<Entity, With<Ground>>,
+    rapier: Res<RapierContext>,
+    time: Res<FixedTime>,
+) {
+    let character_height: f32 = 30.;
+    for (e, mut v, mut t, g) in &mut movers {
+        let v_move_vec = g.reverse().as_vec2();
+
+        // left ray when gravity is down
+        let ray_origin_1 = t.translation.truncate();
+        let result = rapier.cast_ray_and_get_normal(
+            ray_origin_1,
+            v_move_vec,
+            character_height / 2. + 14.,
+            false,
+            QueryFilter::default().exclude_collider(e),
+        );
+
+        if let Some((entity, intersect)) = result {
+            let speed = v_move_vec.dot(v.0);
+
+            // toi from rapier seems to be in pixels, so we convert
+            let toi = (intersect.toi - character_height / 2.) / speed;
+
+            if grounds.contains(entity) && toi < time.period.as_secs_f32() {
+                t.translation += v_move_vec.extend(0.0) * (intersect.toi - character_height / 2.);
+            }
         }
     }
 }

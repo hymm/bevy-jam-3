@@ -483,15 +483,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_github_ci_template"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "bevy_rapier2d",
- "leafwing-input-manager",
-]
-
-[[package]]
 name = "bevy_gltf"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1738,6 +1729,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "363e3677e55ad168fef68cf9de3a4a310b53124c5e784c53a1d70e92d23f2126"
 dependencies = [
  "bitflags",
+]
+
+[[package]]
+name = "gravity_spin"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_rapier2d",
+ "leafwing-input-manager",
 ]
 
 [[package]]
