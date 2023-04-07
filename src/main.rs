@@ -105,7 +105,7 @@ fn control_jump(
 ) {
     const INITIAL_JUMP_SPEED: f32 = 400.0;
     const GRAVITY_PRESSED: f32 = 40.0;
-    const GRAVITY_UNPRESSED: f32 = 80.0;
+    const GRAVITY_UNPRESSED: f32 = 200.0;
     for (mut v, mut jump_state, mut g, g_dir, action_state) in q.iter_mut() {
         if action_state.just_pressed(JumpAction::Jump) {
             if !jump_state.on_ground {
