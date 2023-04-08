@@ -1,18 +1,24 @@
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
+mod goals;
+mod ground;
 mod physics;
 
-use bevy::{prelude::*, sprite::Anchor};
+use crate::goals::GoalBundle;
+use crate::goals::GoalPlugin;
+use crate::ground::GroundBundle;
+use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use leafwing_input_manager::prelude::*;
 use physics::{
-    Acceleration, Direction, Gravity, GravityDirection, Ground, JumpState, PhysicsPlugin, Velocity,
+    Acceleration, Direction, Gravity, GravityDirection, JumpState, PhysicsPlugin, Velocity,
 };
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(PhysicsPlugin)
+        .add_plugin(GoalPlugin)
         .insert_resource(RapierConfiguration {
             timestep_mode: TimestepMode::Fixed {
                 dt: 1. / 60.,
@@ -27,7 +33,7 @@ fn main() {
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .add_startup_system(setup)
         .add_startup_system(spawn_player)
-        .add_startup_system(spawn_ground)
+        .add_startup_system(spawn_level)
         .add_system(control_jump)
         .add_system(control_movement)
         .add_system(player_dies)
@@ -90,7 +96,7 @@ fn spawn_player(mut commands: Commands) {
             last_vertical_movement_dir: Direction::Down,
         },
         Collider::cuboid(10., 15.),
-        Sensor,
+        // Sensor,
     ));
 }
 
@@ -165,84 +171,40 @@ fn player_dies(q: Query<(Entity, &Transform), With<Player>>, mut commands: Comma
     }
 }
 
-fn spawn_ground(mut commands: Commands) {
+fn spawn_level(mut commands: Commands) {
     // bottom
-    commands.spawn((
-        Ground,
-        SpriteBundle {
-            sprite: Sprite {
-                custom_size: Some(Vec2::new(600., 20.)),
-                anchor: Anchor::Center,
-                ..default()
-            },
-            transform: Transform::from_xyz(0.0, -300.0, 0.0),
-            ..default()
-        },
-        Collider::cuboid(300., 10.),
-        Sensor,
-    ));
-
-    // a platform
-    commands.spawn((
-        Ground,
-        SpriteBundle {
-            sprite: Sprite {
-                custom_size: Some(Vec2::new(40., 40.)),
-                anchor: Anchor::Center,
-                ..default()
-            },
-            transform: Transform::from_xyz(100.0, -180.0, 0.0),
-            ..default()
-        },
-        Collider::cuboid(20., 20.),
-        Sensor,
+    commands.spawn(GroundBundle::new(
+        Vec2::new(600., 20.),
+        Vec2::new(0.0, -300.0),
     ));
 
     // top
-    commands.spawn((
-        Ground,
-        SpriteBundle {
-            sprite: Sprite {
-                custom_size: Some(Vec2::new(600., 20.)),
-                anchor: Anchor::Center,
-                ..default()
-            },
-            transform: Transform::from_xyz(0.0, 300.0, 0.0),
-            ..default()
-        },
-        Collider::cuboid(300., 10.),
-        Sensor,
-    ));
+    commands.spawn(GroundBundle::new(Vec2::new(600., 20.), Vec2::new(0., 300.)));
 
     // left
-    commands.spawn((
-        Ground,
-        SpriteBundle {
-            sprite: Sprite {
-                custom_size: Some(Vec2::new(20., 600.)),
-                anchor: Anchor::Center,
-                ..default()
-            },
-            transform: Transform::from_xyz(300.0, 0.0, 0.0),
-            ..default()
-        },
-        Collider::cuboid(10., 300.),
-        Sensor,
-    ));
+    commands.spawn(GroundBundle::new(Vec2::new(20., 600.), Vec2::new(300., 0.)));
 
     // right
-    commands.spawn((
-        Ground,
-        SpriteBundle {
-            sprite: Sprite {
-                custom_size: Some(Vec2::new(20., 600.)),
-                anchor: Anchor::Center,
-                ..default()
-            },
-            transform: Transform::from_xyz(-300.0, 0.0, 0.0),
-            ..default()
-        },
-        Collider::cuboid(10., 300.),
-        Sensor,
+    commands.spawn(GroundBundle::new(
+        Vec2::new(20., 600.),
+        Vec2::new(-300., 0.),
     ));
+
+    // a platform
+    commands.spawn(GroundBundle::new(
+        Vec2::new(60., 60.),
+        Vec2::new(160., -160.),
+    ));
+
+    // a platform
+    commands.spawn(GroundBundle::new(Vec2::new(60., 60.), Vec2::new(0., -0.)));
+
+    // a platform
+    commands.spawn(GroundBundle::new(
+        Vec2::new(60., 60.),
+        Vec2::new(-160., 160.),
+    ));
+
+    // a goal
+    commands.spawn(GoalBundle::new(Vec2::new(-160., 115.)));
 }

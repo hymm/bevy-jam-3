@@ -1,5 +1,6 @@
 use std::f32::consts::PI;
 
+use crate::ground::Ground;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::{QueryFilter, RapierContext};
 
@@ -28,10 +29,6 @@ pub struct PhysicsSet;
 
 #[derive(Component)]
 pub struct Gravity(pub f32);
-
-// a ground entity
-#[derive(Component)]
-pub struct Ground;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
@@ -173,7 +170,7 @@ fn ground_detection(
             g.as_vec2(),
             character_height / 2. + 14.,
             false,
-            QueryFilter::default().exclude_collider(e),
+            QueryFilter::default().exclude_collider(e).exclude_sensors(),
         );
 
         if let Some((entity, intersect)) = result {
@@ -216,7 +213,7 @@ fn side_collision_detection(
             h_move_vec,
             character_width / 2. + 14.,
             false,
-            QueryFilter::default().exclude_collider(e),
+            QueryFilter::default().exclude_collider(e).exclude_sensors(),
         );
 
         if let Some((entity, intersect)) = result {
@@ -237,7 +234,7 @@ fn side_collision_detection(
 
 fn top_collision_detection(
     mut movers: Query<
-        (Entity, &mut Velocity, &mut Transform, &GravityDirection),
+        (Entity, &Velocity, &mut Transform, &GravityDirection),
         (With<JumpState>, Without<Ground>),
     >,
     grounds: Query<Entity, With<Ground>>,
@@ -245,7 +242,7 @@ fn top_collision_detection(
     time: Res<FixedTime>,
 ) {
     let character_height: f32 = 30.;
-    for (e, mut v, mut t, g) in &mut movers {
+    for (e, v, mut t, g) in &mut movers {
         let v_move_vec = g.reverse().as_vec2();
 
         // left ray when gravity is down
@@ -255,7 +252,7 @@ fn top_collision_detection(
             v_move_vec,
             character_height / 2. + 14.,
             false,
-            QueryFilter::default().exclude_collider(e),
+            QueryFilter::default().exclude_collider(e).exclude_sensors(),
         );
 
         if let Some((entity, intersect)) = result {
