@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 
-use crate::ground::Ground;
+use crate::{constants::PLAYER_DIM, ground::Ground};
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::{QueryFilter, RapierContext};
 
@@ -157,7 +157,7 @@ fn ground_detection(
     rapier: Res<RapierContext>,
     time: Res<FixedTime>,
 ) {
-    let character_height = 30.0;
+    let character_height = PLAYER_DIM.y;
     for (e, mut j, v, mut t, g) in &mut jumpers {
         // only check ground detection when moving in the same direction as gravity
         if g.as_vec2().dot(v.0) < 0.0 {
@@ -201,7 +201,7 @@ fn side_collision_detection(
     rapier: Res<RapierContext>,
     time: Res<FixedTime>,
 ) {
-    let character_width: f32 = 20.;
+    let character_width: f32 = PLAYER_DIM.x;
     for (e, v, mut t, g) in &mut movers {
         let h_move_vec =
             (g.forward().as_vec2().dot(v.0) * g.forward().as_vec2()).normalize_or_zero();
@@ -241,7 +241,7 @@ fn top_collision_detection(
     rapier: Res<RapierContext>,
     time: Res<FixedTime>,
 ) {
-    let character_height: f32 = 30.;
+    let character_height: f32 = PLAYER_DIM.y;
     for (e, v, mut t, g) in &mut movers {
         let v_move_vec = g.reverse().as_vec2();
 
@@ -303,10 +303,10 @@ fn rotate_gravity(
             a.0 = Vec2::ZERO;
             jump_state.turned_this_jump = true;
             g_dir.0 = if current_h_direction == g_dir.forward() {
-                t.rotate_z(PI / 2.);
+                t.rotate_z(-PI / 2.);
                 g_dir.cw()
             } else {
-                t.rotate_z(-PI / 2.);
+                t.rotate_z(PI / 2.);
                 g_dir.ccw()
             };
         }

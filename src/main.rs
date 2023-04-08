@@ -1,5 +1,6 @@
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
+mod constants;
 mod goals;
 mod ground;
 mod physics;
@@ -9,6 +10,7 @@ use crate::goals::GoalPlugin;
 use crate::ground::GroundBundle;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
+use constants::PLAYER_DIM;
 use leafwing_input_manager::prelude::*;
 use physics::{
     Acceleration, Direction, Gravity, GravityDirection, JumpState, PhysicsPlugin, Velocity,
@@ -37,6 +39,7 @@ fn main() {
         .add_system(control_jump)
         .add_system(control_movement)
         .add_system(player_dies)
+        .add_system(sprite_orientation)
         .run();
 }
 
@@ -60,7 +63,7 @@ enum MovementAction {
 #[derive(Component)]
 struct Player;
 
-fn spawn_player(mut commands: Commands) {
+fn spawn_player(mut commands: Commands, asset_server: ResMut<AssetServer>) {
     commands.spawn((
         Player,
         InputManagerBundle::<JumpAction> {
@@ -78,10 +81,10 @@ fn spawn_player(mut commands: Commands) {
         },
         SpriteBundle {
             sprite: Sprite {
-                custom_size: Some(Vec2::new(20., 30.)),
-                color: Color::rgb(0.0, 0.7, 0.7),
+                custom_size: Some(PLAYER_DIM),
                 ..default()
             },
+            texture: asset_server.load("pixel-cat.png"),
             transform: Transform::from_xyz(0.0, -250., 0.),
             ..default()
         },
@@ -95,8 +98,7 @@ fn spawn_player(mut commands: Commands) {
             last_horizontal_movement_dir: Direction::Left,
             last_vertical_movement_dir: Direction::Down,
         },
-        Collider::cuboid(10., 15.),
-        // Sensor,
+        Collider::cuboid(PLAYER_DIM.x / 2., PLAYER_DIM.y / 2.),
     ));
 }
 
@@ -159,6 +161,19 @@ fn control_movement(
                 + (dir.forward().as_vec2() * val).normalize() * HORIZONTAL_SPEED;
         } else {
             v.0 *= dir.as_vec2().abs();
+        }
+    }
+}
+
+fn sprite_orientation(
+    mut player: Query<(&mut Sprite, &Velocity, &GravityDirection), With<Player>>,
+) {
+    for (mut s, v, g) in &mut player {
+        let forward_speed = g.forward().as_vec2().dot(v.0);
+        if forward_speed > 0. {
+            s.flip_x = false;
+        } else if forward_speed < 0. {
+            s.flip_x = true;
         }
     }
 }
