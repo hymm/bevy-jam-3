@@ -5,7 +5,7 @@ use leafwing_input_manager::prelude::*;
 use crate::{
     constants::PLAYER_DIM,
     game_state::GameState,
-    physics::{Acceleration, Direction, Gravity, GravityDirection, JumpState, Velocity},
+    physics::{Acceleration, Direction, Gravity, GravityDirection, JumpState, Velocity}, level::CurrentLevel,
 };
 
 pub struct PlayerPlugin;
@@ -65,7 +65,7 @@ pub struct PlayerBundle {
 }
 
 impl PlayerBundle {
-    pub fn new(texture: Handle<Image>) -> PlayerBundle {
+    pub fn new(texture: Handle<Image>, spawn_point: Vec2) -> PlayerBundle {
         PlayerBundle {
             player: Player,
             jump_action: InputManagerBundle::<JumpAction> {
@@ -91,7 +91,7 @@ impl PlayerBundle {
                     ..default()
                 },
                 texture,
-                transform: Transform::from_xyz(0.0, -250., 0.),
+                transform: Transform::from_translation(spawn_point.extend(0.0)),
                 ..default()
             },
             velocity: Velocity::default(),
@@ -197,8 +197,13 @@ fn player_dies(q: Query<(Entity, &Transform), With<Player>>, mut commands: Comma
     }
 }
 
-fn respawn(mut commands: Commands, q: Query<(), With<Player>>, handle: Res<PlayerSprite>) {
+fn respawn(
+    mut commands: Commands,
+    q: Query<(), With<Player>>,
+    handle: Res<PlayerSprite>,
+    level: Res<CurrentLevel>,
+) {
     if q.is_empty() {
-        commands.spawn(PlayerBundle::new(handle.handle.clone()));
+        commands.spawn(PlayerBundle::new(handle.handle.clone(), level.0.spawn));
     }
 }

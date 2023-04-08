@@ -1,13 +1,15 @@
 [package]
-name = "gravity_spin"
-version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
+name = "gravity_spin"
+version = "0.1.0"
 
 [dependencies]
 bevy = "0.10"
-bevy_rapier2d = { version = "0.21.0", features=["debug-render-2d"] }
+bevy_common_assets = {version = "0.6.0", features = ["ron", "serde_ron"]}
+bevy_rapier2d = {version = "0.21.0", features = ["debug-render-2d"]}
 leafwing-input-manager = "0.9.1"
+serde = { version = "1" }
 
 # Enable max optimizations for dependencies, but not for our code:
 [profile.dev.package."*"]

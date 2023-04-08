@@ -17,7 +17,7 @@ pub struct GoalBundle {
 }
 
 impl GoalBundle {
-    pub fn new(position: Vec2) -> GoalBundle {
+    pub fn new(position: &Vec2) -> GoalBundle {
         GoalBundle {
             goal: Goal,
             sprite: SpriteBundle {
