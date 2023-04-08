@@ -19,6 +19,7 @@ impl Plugin for PlayerPlugin {
                     control_movement,
                     player_dies,
                     sprite_orientation,
+                    respawn,
                 )
                     .in_set(GameState::Playing),
             );
@@ -40,6 +41,11 @@ enum MovementAction {
 
 #[derive(Component, Default)]
 pub struct Player;
+
+#[derive(Resource)]
+pub struct PlayerSprite {
+    pub handle: Handle<Image>,
+}
 
 #[derive(Bundle)]
 pub struct PlayerBundle {
@@ -181,8 +187,18 @@ fn sprite_orientation(
 
 fn player_dies(q: Query<(Entity, &Transform), With<Player>>, mut commands: Commands) {
     for (e, t) in &q {
-        if t.translation.y < -500. {
+        if t.translation.y < -400.
+            || t.translation.y > 400.
+            || t.translation.x > 400.
+            || t.translation.x < -400.
+        {
             commands.entity(e).despawn();
         }
+    }
+}
+
+fn respawn(mut commands: Commands, q: Query<(), With<Player>>, handle: Res<PlayerSprite>) {
+    if q.is_empty() {
+        commands.spawn(PlayerBundle::new(handle.handle.clone()));
     }
 }

@@ -1,4 +1,4 @@
-use crate::{game_state::GameState, goals::GoalBundle, ground::GroundBundle, player::PlayerBundle};
+use crate::{game_state::GameState, goals::GoalBundle, ground::GroundBundle, player::PlayerSprite};
 use bevy::prelude::*;
 
 pub struct LevelPlugin;
@@ -10,7 +10,10 @@ impl Plugin for LevelPlugin {
 }
 
 fn spawn_level(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(PlayerBundle::new(asset_server.load("pixel-cat.png")));
+    commands.insert_resource(PlayerSprite {
+        handle: asset_server.load("pixel-cat.png"),
+    });
+
     // bottom
     commands.spawn(GroundBundle::new(
         Vec2::new(600., 20.),
@@ -18,7 +21,7 @@ fn spawn_level(mut commands: Commands, asset_server: Res<AssetServer>) {
     ));
 
     // top
-    commands.spawn(GroundBundle::new(Vec2::new(600., 20.), Vec2::new(0., 300.)));
+    // commands.spawn(GroundBundle::new(Vec2::new(600., 20.), Vec2::new(0., 300.)));
 
     // left
     commands.spawn(GroundBundle::new(Vec2::new(20., 600.), Vec2::new(300., 0.)));

@@ -9,7 +9,9 @@ pub struct StartMenuPlugin;
 impl Plugin for StartMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(spawn_menu.in_schedule(OnEnter(GameState::StartMenu)))
-            .add_system(button_system.run_if(in_state(GameState::StartMenu)))
+            .add_systems(
+                (keyboard_start, button_system).distributive_run_if(in_state(GameState::StartMenu)),
+            )
             .add_system(despawn_menu.in_schedule(OnExit(GameState::StartMenu)));
     }
 }
@@ -90,5 +92,11 @@ fn button_system(
                 *color = NORMAL_BUTTON.into();
             }
         }
+    }
+}
+
+fn keyboard_start(keyboard_input: Res<Input<KeyCode>>, mut state: ResMut<NextState<GameState>>) {
+    if keyboard_input.pressed(KeyCode::Space) || keyboard_input.pressed(KeyCode::Return) {
+        state.set(GameState::LoadLevel);
     }
 }

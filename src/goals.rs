@@ -43,8 +43,8 @@ fn goal_collision_detection(
     rapier: Res<RapierContext>,
 ) {
     for goal in &goals {
-        for (entity, _, _) in rapier.intersections_with(goal) {
-            if player.contains(entity) {
+        for (entity1, entity2, _) in rapier.intersections_with(goal) {
+            if player.contains(entity1) || player.contains(entity2) {
                 commands.entity(goal).despawn();
             }
         }
