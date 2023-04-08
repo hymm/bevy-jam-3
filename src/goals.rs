@@ -40,17 +40,13 @@ fn goal_collision_detection(
     mut commands: Commands,
     player: Query<Entity, With<Player>>,
     goals: Query<Entity, With<Goal>>,
-    mut collisions: EventReader<CollisionEvent>,
+    rapier: Res<RapierContext>,
 ) {
-    for collision in &mut collisions {
-        dbg!(collision);
-        match collision {
-            CollisionEvent::Started(maybe_goal, maybe_player, _) => {
-                if goals.contains(*maybe_goal) && player.contains(*maybe_player) {
-                    commands.entity(*maybe_goal).despawn();
-                }
+    for goal in &goals {
+        for (entity, _, _) in rapier.intersections_with(goal) {
+            if player.contains(entity) {
+                commands.entity(goal).despawn();
             }
-            _ => {}
         }
     }
 }
@@ -58,6 +54,6 @@ fn goal_collision_detection(
 pub struct GoalPlugin;
 impl Plugin for GoalPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(goal_collision_detection.in_schedule(CoreSchedule::FixedUpdate));
+        app.add_system(goal_collision_detection);
     }
 }

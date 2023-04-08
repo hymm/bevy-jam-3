@@ -77,6 +77,10 @@ fn spawn_player(mut commands: Commands, asset_server: ResMut<AssetServer>) {
                 (KeyCode::D, MovementAction::Right),
                 (KeyCode::W, MovementAction::Up),
                 (KeyCode::S, MovementAction::Down),
+                (KeyCode::Left, MovementAction::Left),
+                (KeyCode::Right, MovementAction::Right),
+                (KeyCode::Up, MovementAction::Up),
+                (KeyCode::Down, MovementAction::Down),
             ]),
         },
         SpriteBundle {
@@ -222,4 +226,9 @@ fn spawn_level(mut commands: Commands) {
 
     // a goal
     commands.spawn(GoalBundle::new(Vec2::new(-160., 115.)));
+
+    // a goal
+    commands.spawn(GoalBundle::new(Vec2::new(0., -45.)));
+    // a goal
+    commands.spawn(GoalBundle::new(Vec2::new(115., -160.)));
 }
