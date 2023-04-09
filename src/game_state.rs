@@ -5,6 +5,7 @@ pub enum GameState {
     #[default]
     StartMenu,
     LoadLevel,
+    SpawnLevel,
     Playing,
     UnloadLevel,
     Respawn,

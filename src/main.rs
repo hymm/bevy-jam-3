@@ -12,9 +12,10 @@ mod start_menu;
 use crate::goals::GoalPlugin;
 use bevy::prelude::*;
 use bevy::window::WindowResolution;
+use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_rapier2d::prelude::*;
 use game_state::GameStatePlugin;
-use level::{CurrentLevel, Level, LevelPlugin, GroundConfig};
+use level::{Level, LevelPlugin};
 use physics::PhysicsPlugin;
 use player::PlayerPlugin;
 use start_menu::StartMenuPlugin;
@@ -29,6 +30,7 @@ fn main() {
             }),
             ..default()
         }))
+        .add_plugin(RonAssetPlugin::<Level>::new(&["level.ron"]))
         .add_plugin(GameStatePlugin)
         .add_plugin(StartMenuPlugin)
         .add_plugin(PhysicsPlugin)
@@ -51,47 +53,4 @@ fn main() {
 
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
-    commands.insert_resource(CurrentLevel(Level {
-        spawn: Vec2::new(0., -250.),
-        grounds: vec![
-            // bottom
-            GroundConfig {
-                dim: Vec2::new(600., 20.),
-                pos: Vec2::new(0.0, -300.0),
-            },
-            // top
-            // GroundConfig {
-            //     dim: Vec2::new(600., 20.),
-            //     pos: Vec2::new(0.0, 300.0),
-            // },
-            // left
-            GroundConfig {
-                dim: Vec2::new(20., 600.),
-                pos: Vec2::new(300., 0.),
-            },
-            // right
-            GroundConfig {
-                dim: Vec2::new(20., 600.),
-                pos: Vec2::new(-300., 0.),
-            },
-            // platform
-            GroundConfig {
-                dim: Vec2::new(60., 60.),
-                pos: Vec2::new(160., -160.),
-            }, // platform
-            GroundConfig {
-                dim: Vec2::new(60., 60.),
-                pos: Vec2::new(0., 0.),
-            }, // platform
-            GroundConfig {
-                dim: Vec2::new(60., 60.),
-                pos: Vec2::new(-160., 160.),
-            },
-        ],
-        goals: vec![
-            Vec2::new(-160., 115.),
-            Vec2::new(0., -45.),
-            Vec2::new(115., -160.),
-        ],
-    }));
 }

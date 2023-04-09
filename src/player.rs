@@ -5,7 +5,7 @@ use leafwing_input_manager::prelude::*;
 use crate::{
     constants::PLAYER_DIM,
     game_state::GameState,
-    physics::{Acceleration, Direction, Gravity, GravityDirection, JumpState, Velocity}, level::CurrentLevel,
+    physics::{Acceleration, Direction, Gravity, GravityDirection, JumpState, Velocity}, level::{CurrentLevel, Level},
 };
 
 pub struct PlayerPlugin;
@@ -201,9 +201,11 @@ fn respawn(
     mut commands: Commands,
     q: Query<(), With<Player>>,
     handle: Res<PlayerSprite>,
-    level: Res<CurrentLevel>,
+    current_level: Res<CurrentLevel>,
+    levels: Res<Assets<Level>>,
 ) {
     if q.is_empty() {
-        commands.spawn(PlayerBundle::new(handle.handle.clone(), level.0.spawn));
+        let level = levels.get(&current_level.0).unwrap();
+        commands.spawn(PlayerBundle::new(handle.handle.clone(), level.spawn));
     }
 }
