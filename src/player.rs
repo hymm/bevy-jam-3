@@ -5,7 +5,8 @@ use leafwing_input_manager::prelude::*;
 use crate::{
     constants::PLAYER_DIM,
     game_state::GameState,
-    physics::{Acceleration, Direction, Gravity, GravityDirection, JumpState, Velocity}, level::{CurrentLevel, Level},
+    level::{CurrentLevel, Level},
+    physics::{Acceleration, Direction, Gravity, GravityDirection, JumpState, Velocity},
 };
 
 pub struct PlayerPlugin;

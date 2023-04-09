@@ -8,6 +8,7 @@ mod level;
 mod physics;
 mod player;
 mod start_menu;
+mod win_screen;
 
 use crate::goals::GoalPlugin;
 use bevy::prelude::*;
@@ -19,6 +20,7 @@ use level::{Level, LevelPlugin};
 use physics::PhysicsPlugin;
 use player::PlayerPlugin;
 use start_menu::StartMenuPlugin;
+use win_screen::WinScreenPlugin;
 
 fn main() {
     App::new()
@@ -44,6 +46,7 @@ fn main() {
         .add_plugin(GoalPlugin)
         .add_plugin(LevelPlugin)
         .add_plugin(PlayerPlugin)
+        .add_plugin(WinScreenPlugin)
         .insert_resource(RapierConfiguration {
             timestep_mode: TimestepMode::Fixed {
                 dt: 1. / 60.,

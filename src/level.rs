@@ -9,12 +9,15 @@ use bevy::{asset::LoadState, prelude::*, reflect::TypeUuid};
 pub struct LevelPlugin;
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Levels>()
-            .add_system(spawn_level.in_schedule(OnEnter(GameState::SpawnLevel)))
-            .add_system(load_level.in_schedule(OnEnter(GameState::LoadLevel)))
-            .add_system(check_load_status.run_if(in_state(GameState::LoadLevel)))
-            .add_system(spawn_done.run_if(in_state(GameState::SpawnLevel)))
-            .add_system(despawn_level.in_schedule(OnExit(GameState::Playing)))
+        app.init_resource::<Levels>();
+
+        app.add_system(load_level.in_schedule(OnEnter(GameState::LoadLevel)))
+            .add_system(check_load_status.run_if(in_state(GameState::LoadLevel)));
+
+        app.add_system(spawn_level.in_schedule(OnEnter(GameState::SpawnLevel)))
+            .add_system(spawn_done.run_if(in_state(GameState::SpawnLevel)));
+
+        app.add_system(despawn_level.in_schedule(OnExit(GameState::Playing)))
             .add_systems(
                 (monitor_level_changes, level_complete)
                     .distributive_run_if(in_state(GameState::Playing)),
