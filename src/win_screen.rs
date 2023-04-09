@@ -13,7 +13,6 @@ impl Plugin for WinScreenPlugin {
 struct WinMarker;
 
 fn spawn_win_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
-    dbg!("spawn_win");
     commands
         .spawn((
             WinMarker,

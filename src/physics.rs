@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use crate::{constants::PLAYER_DIM, ground::Ground};
-use bevy::prelude::*;
+use bevy::{prelude::*, reflect::TypeUuid};
 use bevy_rapier2d::prelude::{QueryFilter, RapierContext};
 
 pub struct PhysicsPlugin;
@@ -105,6 +105,15 @@ pub struct JumpState {
     pub turned_this_jump: bool,
     pub last_horizontal_movement_dir: Direction,
     pub last_vertical_movement_dir: Direction,
+}
+
+#[derive(Resource, serde::Deserialize, TypeUuid, Debug)]
+#[uuid = "4393bc64-8efd-422e-b0b3-873d40261987"]
+pub struct PhysicsSettings {
+    pub initial_jump_speed: f32,
+    pub gravity_pressed: f32,
+    pub gravity_unpressed: f32,
+    pub horizontal_speed: f32,
 }
 
 fn apply_gravity(

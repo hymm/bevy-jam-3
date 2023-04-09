@@ -6,7 +6,9 @@ use crate::{
     constants::PLAYER_DIM,
     game_state::GameState,
     level::{CurrentLevel, Level},
-    physics::{Acceleration, Direction, Gravity, GravityDirection, JumpState, Velocity},
+    physics::{
+        Acceleration, Direction, Gravity, GravityDirection, JumpState, PhysicsSettings, Velocity,
+    },
 };
 
 pub struct PlayerPlugin;
@@ -115,25 +117,23 @@ fn control_jump(
         &GravityDirection,
         &ActionState<JumpAction>,
     )>,
+    settings: Res<PhysicsSettings>,
 ) {
-    const INITIAL_JUMP_SPEED: f32 = 400.0;
-    const GRAVITY_PRESSED: f32 = 40.0;
-    const GRAVITY_UNPRESSED: f32 = 200.0;
     for (mut v, mut jump_state, mut g, g_dir, action_state) in q.iter_mut() {
         if action_state.just_pressed(JumpAction::Jump) {
             if !jump_state.on_ground {
                 return;
             }
-            v.0 -= INITIAL_JUMP_SPEED * g_dir.as_vec2();
+            v.0 -= settings.initial_jump_speed * g_dir.as_vec2();
             jump_state.on_ground = false;
             jump_state.turned_this_jump = false;
         }
 
         g.0 = if action_state.pressed(JumpAction::Jump) {
-            GRAVITY_PRESSED
+            settings.gravity_pressed
         } else {
-            GRAVITY_UNPRESSED
-        }
+            settings.gravity_unpressed
+        };
     }
 }
 
@@ -143,8 +143,8 @@ fn control_movement(
         &ActionState<MovementAction>,
         &GravityDirection,
     )>,
+    settings: Res<PhysicsSettings>,
 ) {
-    const HORIZONTAL_SPEED: f32 = 200.0;
     for (mut v, action, dir) in &mut q {
         let mut temp_v = Vec2::ZERO;
         if action.pressed(MovementAction::Down) {
@@ -163,7 +163,7 @@ fn control_movement(
         let val = dir.forward().as_vec2().dot(temp_v);
         if val != 0.0 {
             v.0 = v.0 * dir.as_vec2().abs()
-                + (dir.forward().as_vec2() * val).normalize() * HORIZONTAL_SPEED;
+                + (dir.forward().as_vec2() * val).normalize() * settings.horizontal_speed;
         } else {
             v.0 *= dir.as_vec2().abs();
         }

@@ -17,7 +17,7 @@ use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_rapier2d::prelude::*;
 use game_state::GameStatePlugin;
 use level::{Level, LevelPlugin};
-use physics::PhysicsPlugin;
+use physics::{PhysicsPlugin, PhysicsSettings};
 use player::PlayerPlugin;
 use start_menu::StartMenuPlugin;
 use win_screen::WinScreenPlugin;
@@ -57,6 +57,12 @@ fn main() {
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.))
         // .add_plugin(RapierDebugRenderPlugin::default())
         .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
+        .insert_resource(PhysicsSettings {
+            initial_jump_speed: 400.0,
+            gravity_pressed: 40.0,
+            gravity_unpressed: 200.0,
+            horizontal_speed: 200.0,
+        })
         .add_startup_system(setup)
         .run();
 }
