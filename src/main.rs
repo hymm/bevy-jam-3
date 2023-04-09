@@ -22,14 +22,21 @@ use start_menu::StartMenuPlugin;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Cat Spin".to_string(),
-                resolution: WindowResolution::new(720., 720.),
-                ..default()
-            }),
-            ..default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "Cat Spin".to_string(),
+                        resolution: WindowResolution::new(720., 720.),
+                        ..default()
+                    }),
+                    ..default()
+                })
+                .set(AssetPlugin {
+                    watch_for_changes: true,
+                    ..default()
+                }),
+        )
         .add_plugin(RonAssetPlugin::<Level>::new(&["level.ron"]))
         .add_plugin(GameStatePlugin)
         .add_plugin(StartMenuPlugin)

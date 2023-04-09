@@ -50,11 +50,8 @@ pub struct PlayerSprite {
 #[derive(Bundle)]
 pub struct PlayerBundle {
     player: Player,
-    #[bundle]
     jump_action: InputManagerBundle<JumpAction>,
-    #[bundle]
     movement_action: InputManagerBundle<MovementAction>,
-    #[bundle]
     sprite: SpriteBundle,
     velocity: Velocity,
     acceleration: Acceleration,
