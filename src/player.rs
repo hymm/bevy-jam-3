@@ -194,10 +194,7 @@ fn player_dies(q: Query<(Entity, &Transform), With<Player>>, mut commands: Comma
     }
 }
 
-fn reload(
-    q: Query<(), With<Player>>,
-    mut state: ResMut<NextState<GameState>>,
-) {
+fn reload(q: Query<(), With<Player>>, mut state: ResMut<NextState<GameState>>) {
     if q.is_empty() {
         state.set(GameState::SpawnLevel);
     }

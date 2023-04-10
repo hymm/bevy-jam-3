@@ -39,6 +39,7 @@ impl Default for Levels {
                 "box".to_string(),
                 "fall_for_it".to_string(),
                 "stairs".to_string(),
+                "upsidedown-u".to_string(),
                 "3_die".to_string(),
                 "5_floating_boxes".to_string(),
             ],
@@ -78,10 +79,9 @@ pub struct GroundConfig {
 }
 
 fn load_level(mut commands: Commands, asset_server: Res<AssetServer>, levels: Res<Levels>) {
-    commands
-        .insert_resource(CurrentLevel(asset_server.load(
-            "levels/".to_string() + levels.current_level() + ".level.ron",
-        )));
+    commands.insert_resource(CurrentLevel(
+        asset_server.load("levels/".to_string() + levels.current_level() + ".level.ron"),
+    ));
 }
 
 fn check_load_status(
