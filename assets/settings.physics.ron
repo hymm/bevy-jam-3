@@ -1,0 +1,7 @@
+(
+    initial_jump_speed: 400.0,
+    gravity_pressed: 40.0,
+    gravity_unpressed: 400.0,
+    horizontal_speed: 250.0,
+    max_speed: 700.0,
+)

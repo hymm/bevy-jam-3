@@ -40,6 +40,7 @@ fn main() {
                 }),
         )
         .add_plugin(RonAssetPlugin::<Level>::new(&["level.ron"]))
+        .add_plugin(RonAssetPlugin::<PhysicsSettings>::new(&["physics.ron"]))
         .add_plugin(GameStatePlugin)
         .add_plugin(StartMenuPlugin)
         .add_plugin(PhysicsPlugin)
@@ -62,6 +63,7 @@ fn main() {
             gravity_pressed: 40.0,
             gravity_unpressed: 200.0,
             horizontal_speed: 200.0,
+            max_speed: 700.0,
         })
         .add_startup_system(setup)
         .run();

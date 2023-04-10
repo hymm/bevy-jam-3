@@ -34,7 +34,11 @@ impl Default for Levels {
     fn default() -> Self {
         Self {
             current_level: 0,
-            levels: vec!["box.level.ron".to_string(), "3_die.level.ron".to_string()],
+            levels: vec![
+                "5_floating_boxes.level.ron".to_string(),
+                "box.level.ron".to_string(),
+                "3_die.level.ron".to_string(),
+            ],
         }
     }
 }
@@ -71,7 +75,7 @@ pub struct GroundConfig {
 }
 
 fn load_level(mut commands: Commands, asset_server: Res<AssetServer>, levels: Res<Levels>) {
-    commands.insert_resource(CurrentLevel(asset_server.load(levels.current_level())));
+    commands.insert_resource(CurrentLevel(asset_server.load("levels/".to_string() + levels.current_level())));
 }
 
 fn check_load_status(

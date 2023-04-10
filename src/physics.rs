@@ -21,6 +21,8 @@ impl Plugin for PhysicsPlugin {
                 .in_set(PhysicsSet)
                 .in_schedule(CoreSchedule::FixedUpdate),
         );
+        app.add_startup_system(load_physics);
+        app.add_system(monitor_physics_changes);
     }
 }
 
@@ -107,14 +109,18 @@ pub struct JumpState {
     pub last_vertical_movement_dir: Direction,
 }
 
-#[derive(Resource, serde::Deserialize, TypeUuid, Debug)]
+#[derive(Resource, serde::Deserialize, TypeUuid, Debug, Clone)]
 #[uuid = "4393bc64-8efd-422e-b0b3-873d40261987"]
 pub struct PhysicsSettings {
     pub initial_jump_speed: f32,
     pub gravity_pressed: f32,
     pub gravity_unpressed: f32,
     pub horizontal_speed: f32,
+    pub max_speed: f32,
 }
+
+#[derive(Resource)]
+struct PhysicsSettingsHandle(pub Handle<PhysicsSettings>);
 
 fn apply_gravity(
     mut q: Query<(
@@ -143,11 +149,15 @@ fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<
     }
 }
 
-fn apply_acceleration(mut q: Query<(&mut Velocity, &Acceleration)>, time_step: Res<FixedTime>) {
-    const MAX_VELOCITY: Vec2 = Vec2::new(700.0, 700.0);
+fn apply_acceleration(
+    mut q: Query<(&mut Velocity, &Acceleration)>,
+    time_step: Res<FixedTime>,
+    settings: Res<PhysicsSettings>,
+) {
+    let max_velocity = Vec2::new(settings.max_speed, settings.max_speed);
     for (mut v, a) in &mut q {
         v.0 += a.0 * time_step.period.as_secs_f32();
-        v.0 = v.0.clamp(-MAX_VELOCITY, MAX_VELOCITY);
+        v.0 = v.0.clamp(-max_velocity, max_velocity);
     }
 }
 
@@ -322,5 +332,26 @@ fn rotate_gravity(
 
         jump_state.last_horizontal_movement_dir = current_h_direction;
         jump_state.last_vertical_movement_dir = current_v_direction;
+    }
+}
+
+fn load_physics(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let handle = asset_server.load("settings.physics.ron");
+    commands.insert_resource(PhysicsSettingsHandle(handle));
+}
+
+fn monitor_physics_changes(
+    mut commands: Commands,
+    mut events: EventReader<AssetEvent<PhysicsSettings>>,
+    settings: Res<Assets<PhysicsSettings>>,
+) {
+    for e in &mut events {
+        match e {
+            AssetEvent::Created { handle } | AssetEvent::Modified { handle } => {
+                let setting = settings.get(handle).unwrap();
+                commands.insert_resource(setting.clone())
+            }
+            _ => {}
+        }
     }
 }
