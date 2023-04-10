@@ -54,7 +54,7 @@ fn spawn_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
                     parent.spawn((
                         MenuMarker,
                         TextBundle::from_section(
-                            "Press Space to Start",
+                            "Click or Press Space to Start",
                             TextStyle {
                                 font: asset_server.load("Rubik-Light.ttf"),
                                 font_size: 40.0,
