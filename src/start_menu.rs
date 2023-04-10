@@ -10,7 +10,7 @@ impl Plugin for StartMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(spawn_menu.in_schedule(OnEnter(GameState::StartMenu)))
             .add_systems(
-                (keyboard_start, button_system).distributive_run_if(in_state(GameState::StartMenu)),
+                (input_start, button_system).distributive_run_if(in_state(GameState::StartMenu)),
             )
             .add_system(despawn_menu.in_schedule(OnExit(GameState::StartMenu)));
     }
@@ -104,8 +104,21 @@ fn button_system(
     }
 }
 
-fn keyboard_start(keyboard_input: Res<Input<KeyCode>>, mut state: ResMut<NextState<GameState>>) {
+fn input_start(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut state: ResMut<NextState<GameState>>,
+    button_inputs: Res<Input<GamepadButton>>,
+    gamepads: Res<Gamepads>,
+) {
     if keyboard_input.pressed(KeyCode::Space) || keyboard_input.pressed(KeyCode::Return) {
         state.set(GameState::LoadLevel);
+    }
+
+    for gamepad in gamepads.iter() {
+        if button_inputs.pressed(GamepadButton::new(gamepad, GamepadButtonType::Start))
+            || button_inputs.pressed(GamepadButton::new(gamepad, GamepadButtonType::South))
+        {
+            state.set(GameState::LoadLevel);
+        }
     }
 }

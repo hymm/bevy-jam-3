@@ -66,24 +66,35 @@ pub struct PlayerBundle {
 
 impl PlayerBundle {
     pub fn new(texture: Handle<Image>, spawn_point: Vec2) -> PlayerBundle {
+        let mut jump_action_map = InputMap::new([(KeyCode::Space, JumpAction::Jump)]);
+        jump_action_map.insert(GamepadButtonType::South, JumpAction::Jump);
+
+        let mut movement_action_map = InputMap::new([
+            (KeyCode::A, MovementAction::Left),
+            (KeyCode::D, MovementAction::Right),
+            (KeyCode::W, MovementAction::Up),
+            (KeyCode::S, MovementAction::Down),
+            (KeyCode::Left, MovementAction::Left),
+            (KeyCode::Right, MovementAction::Right),
+            (KeyCode::Up, MovementAction::Up),
+            (KeyCode::Down, MovementAction::Down),
+        ]);
+        movement_action_map.insert_multiple([
+            (GamepadButtonType::DPadLeft, MovementAction::Left),
+            (GamepadButtonType::DPadRight, MovementAction::Right),
+            (GamepadButtonType::DPadUp, MovementAction::Up),
+            (GamepadButtonType::DPadDown, MovementAction::Down),
+        ]);
+
         PlayerBundle {
             player: Player,
             jump_action: InputManagerBundle::<JumpAction> {
                 action_state: ActionState::default(),
-                input_map: InputMap::new([(KeyCode::Space, JumpAction::Jump)]),
+                input_map: jump_action_map,
             },
             movement_action: InputManagerBundle::<MovementAction> {
                 action_state: ActionState::default(),
-                input_map: InputMap::new([
-                    (KeyCode::A, MovementAction::Left),
-                    (KeyCode::D, MovementAction::Right),
-                    (KeyCode::W, MovementAction::Up),
-                    (KeyCode::S, MovementAction::Down),
-                    (KeyCode::Left, MovementAction::Left),
-                    (KeyCode::Right, MovementAction::Right),
-                    (KeyCode::Up, MovementAction::Up),
-                    (KeyCode::Down, MovementAction::Down),
-                ]),
+                input_map: movement_action_map,
             },
             sprite: SpriteBundle {
                 sprite: Sprite {
