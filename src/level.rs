@@ -2,7 +2,7 @@ use crate::{
     game_state::GameState,
     goals::{Goal, GoalBundle},
     ground::{Ground, GroundBundle},
-    player::{Player, PlayerSprite},
+    player::{Player, PlayerBundle, PlayerSprite},
 };
 use bevy::{asset::LoadState, prelude::*, reflect::TypeUuid};
 
@@ -35,9 +35,11 @@ impl Default for Levels {
         Self {
             current_level: 0,
             levels: vec![
-                "5_floating_boxes.level.ron".to_string(),
-                "box.level.ron".to_string(),
-                "3_die.level.ron".to_string(),
+                "learn_to_move".to_string(),
+                "box".to_string(),
+                "fall_for_it".to_string(),
+                "3_die".to_string(),
+                "5_floating_boxes".to_string(),
             ],
         }
     }
@@ -75,7 +77,10 @@ pub struct GroundConfig {
 }
 
 fn load_level(mut commands: Commands, asset_server: Res<AssetServer>, levels: Res<Levels>) {
-    commands.insert_resource(CurrentLevel(asset_server.load("levels/".to_string() + levels.current_level())));
+    commands
+        .insert_resource(CurrentLevel(asset_server.load(
+            "levels/".to_string() + levels.current_level() + ".level.ron",
+        )));
 }
 
 fn check_load_status(
@@ -96,11 +101,14 @@ fn spawn_level(
     current_level: Res<CurrentLevel>,
     levels: Res<Assets<Level>>,
 ) {
+    let player_handle = asset_server.load("pixel-cat.png");
     commands.insert_resource(PlayerSprite {
-        handle: asset_server.load("pixel-cat.png"),
+        handle: player_handle.clone(),
     });
 
     let level = levels.get(&current_level.0).unwrap();
+
+    commands.spawn(PlayerBundle::new(player_handle, level.spawn));
 
     for config in &level.grounds {
         commands.spawn(GroundBundle::new(config.dim, config.pos));

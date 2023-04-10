@@ -5,7 +5,6 @@ use leafwing_input_manager::prelude::*;
 use crate::{
     constants::PLAYER_DIM,
     game_state::GameState,
-    level::{CurrentLevel, Level},
     physics::{
         Acceleration, Direction, Gravity, GravityDirection, JumpState, PhysicsSettings, Velocity,
     },
@@ -22,7 +21,7 @@ impl Plugin for PlayerPlugin {
                     control_movement,
                     player_dies,
                     sprite_orientation,
-                    respawn,
+                    reload,
                 )
                     .in_set(GameState::Playing),
             );
@@ -195,15 +194,11 @@ fn player_dies(q: Query<(Entity, &Transform), With<Player>>, mut commands: Comma
     }
 }
 
-fn respawn(
-    mut commands: Commands,
+fn reload(
     q: Query<(), With<Player>>,
-    handle: Res<PlayerSprite>,
-    current_level: Res<CurrentLevel>,
-    levels: Res<Assets<Level>>,
+    mut state: ResMut<NextState<GameState>>,
 ) {
     if q.is_empty() {
-        let level = levels.get(&current_level.0).unwrap();
-        commands.spawn(PlayerBundle::new(handle.handle.clone(), level.spawn));
+        state.set(GameState::SpawnLevel);
     }
 }
