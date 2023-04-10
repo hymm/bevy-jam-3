@@ -32,8 +32,8 @@ fn spawn_win_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
                 TextBundle::from_section(
                     "You Win!",
                     TextStyle {
-                        font: asset_server.load("FiraSans-Bold.ttf"),
-                        font_size: 40.0,
+                        font: asset_server.load("Rubik-Light.ttf"),
+                        font_size: 80.0,
                         color: Color::rgb(0.9, 0.9, 0.9),
                     },
                 ),

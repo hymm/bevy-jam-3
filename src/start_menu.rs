@@ -2,9 +2,9 @@ use bevy::prelude::*;
 
 use crate::game_state::GameState;
 
-const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
-const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
-const PRESSED_BUTTON: Color = Color::rgb(0.35, 0.75, 0.35);
+const NORMAL_BUTTON: Color = Color::rgba(0.15, 0.15, 0.15, 0.);
+const HOVERED_BUTTON: Color = Color::rgba(0.25, 0.25, 0.25, 0.);
+const PRESSED_BUTTON: Color = Color::rgba(0.35, 0.75, 0.35, 0.);
 pub struct StartMenuPlugin;
 impl Plugin for StartMenuPlugin {
     fn build(&self, app: &mut App) {
@@ -39,7 +39,7 @@ fn spawn_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
                     MenuMarker,
                     ButtonBundle {
                         style: Style {
-                            size: Size::new(Val::Px(150.0), Val::Px(65.0)),
+                            size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
                             // horizontally center child text
                             justify_content: JustifyContent::Center,
                             // vertically center child text
@@ -54,9 +54,9 @@ fn spawn_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
                     parent.spawn((
                         MenuMarker,
                         TextBundle::from_section(
-                            "Start",
+                            "Press Space to Start",
                             TextStyle {
-                                font: asset_server.load("FiraSans-Bold.ttf"),
+                                font: asset_server.load("Rubik-Light.ttf"),
                                 font_size: 40.0,
                                 color: Color::rgb(0.9, 0.9, 0.9),
                             },
@@ -64,6 +64,15 @@ fn spawn_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
                     ));
                 });
         });
+
+    commands.spawn((
+        MenuMarker,
+        SpriteBundle {
+            texture: asset_server.load("start-screen.png"),
+            transform: Transform::from_xyz(0., 0., 1.0),
+            ..default()
+        },
+    ));
 }
 
 fn despawn_menu(mut commands: Commands, q: Query<Entity, With<MenuMarker>>) {

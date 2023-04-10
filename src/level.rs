@@ -12,6 +12,8 @@ impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Levels>();
 
+        app.add_system(restart);
+
         app.add_system(load_level.in_schedule(OnEnter(GameState::LoadLevel)))
             .add_system(check_load_status.run_if(in_state(GameState::LoadLevel)));
 
@@ -174,5 +176,11 @@ fn level_complete(
         } else {
             state.set(GameState::WinScreen);
         }
+    }
+}
+
+fn restart(keyboard: Res<Input<KeyCode>>, mut state: ResMut<NextState<GameState>>) {
+    if keyboard.pressed(KeyCode::Escape) {
+        state.set(GameState::StartMenu);
     }
 }
