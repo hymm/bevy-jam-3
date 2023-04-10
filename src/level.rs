@@ -42,6 +42,7 @@ impl Default for Levels {
                 "stairs".to_string(),
                 "upsidedown-u".to_string(),
                 "3_die".to_string(),
+                "cross".to_string(),
                 "5_floating_boxes".to_string(),
             ],
         }

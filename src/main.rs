@@ -38,7 +38,8 @@ fn main() {
                 .set(AssetPlugin {
                     watch_for_changes: true,
                     ..default()
-                }).set(ImagePlugin::default_nearest()),
+                })
+                .set(ImagePlugin::default_nearest()),
         )
         .add_plugin(RonAssetPlugin::<Level>::new(&["level.ron"]))
         .add_plugin(RonAssetPlugin::<PhysicsSettings>::new(&["physics.ron"]))
