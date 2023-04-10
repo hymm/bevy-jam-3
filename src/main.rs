@@ -15,6 +15,7 @@ use bevy::prelude::*;
 use bevy::window::WindowResolution;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_rapier2d::prelude::*;
+use bevy_turborand::prelude::*;
 use game_state::GameStatePlugin;
 use level::{Level, LevelPlugin};
 use physics::{PhysicsPlugin, PhysicsSettings};
@@ -28,7 +29,7 @@ fn main() {
             DefaultPlugins
                 .set(WindowPlugin {
                     primary_window: Some(Window {
-                        title: "Cat Spin".to_string(),
+                        title: "Cats Always Land on their Feet".to_string(),
                         resolution: WindowResolution::new(720., 720.),
                         ..default()
                     }),
@@ -37,10 +38,11 @@ fn main() {
                 .set(AssetPlugin {
                     watch_for_changes: true,
                     ..default()
-                }),
+                }).set(ImagePlugin::default_nearest()),
         )
         .add_plugin(RonAssetPlugin::<Level>::new(&["level.ron"]))
         .add_plugin(RonAssetPlugin::<PhysicsSettings>::new(&["physics.ron"]))
+        .add_plugin(RngPlugin::default())
         .add_plugin(GameStatePlugin)
         .add_plugin(StartMenuPlugin)
         .add_plugin(PhysicsPlugin)

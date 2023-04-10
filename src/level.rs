@@ -1,10 +1,11 @@
 use crate::{
     game_state::GameState,
-    goals::{Goal, GoalBundle},
+    goals::{Goal, GoalBundle, GoalHandles},
     ground::{Ground, GroundBundle},
     player::{Player, PlayerBundle, PlayerSprite},
 };
 use bevy::{asset::LoadState, prelude::*, reflect::TypeUuid};
+use bevy_turborand::{DelegatedRng, GlobalRng};
 
 pub struct LevelPlugin;
 impl Plugin for LevelPlugin {
@@ -101,6 +102,8 @@ fn spawn_level(
     asset_server: Res<AssetServer>,
     current_level: Res<CurrentLevel>,
     levels: Res<Assets<Level>>,
+    goal_handles: Res<GoalHandles>,
+    mut rand: ResMut<GlobalRng>,
 ) {
     let player_handle = asset_server.load("pixel-cat.png");
     commands.insert_resource(PlayerSprite {
@@ -116,7 +119,9 @@ fn spawn_level(
     }
 
     for goal in &level.goals {
-        commands.spawn(GoalBundle::new(goal));
+        let index = rand.u8(0..goal_handles.handles.len() as u8) as usize;
+        let handle = &goal_handles.handles[index];
+        commands.spawn(GoalBundle::new(goal, handle));
     }
 }
 
