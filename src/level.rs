@@ -22,7 +22,7 @@ impl Plugin for LevelPlugin {
 
         app.add_system(despawn_level.in_schedule(OnExit(GameState::Playing)))
             .add_systems(
-                (monitor_level_changes, level_complete)
+                (monitor_level_changes, level_complete, skip_level)
                     .distributive_run_if(in_state(GameState::Playing)),
             );
     }
@@ -182,5 +182,19 @@ fn level_complete(
 fn restart(keyboard: Res<Input<KeyCode>>, mut state: ResMut<NextState<GameState>>) {
     if keyboard.pressed(KeyCode::Escape) {
         state.set(GameState::StartMenu);
+    }
+}
+
+fn skip_level(
+    keyboard: Res<Input<KeyCode>>,
+    mut levels: ResMut<Levels>,
+    mut state: ResMut<NextState<GameState>>,
+) {
+    if keyboard.just_pressed(KeyCode::Key0) {
+        if levels.advance_level() {
+            state.set(GameState::LoadLevel);
+        } else {
+            state.set(GameState::WinScreen);
+        }
     }
 }
