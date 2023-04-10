@@ -22,9 +22,10 @@ impl GroundBundle {
                 sprite: Sprite {
                     custom_size: Some(dimensions),
                     anchor: Anchor::Center,
+                    color: Color::rgb_u8(92, 114, 125),
                     ..default()
                 },
-                transform: Transform::from_translation(position.extend(0.0)),
+                transform: Transform::from_translation(position.extend(1.0)),
                 ..default()
             },
             collider: Collider::cuboid(dimensions.x / 2., dimensions.y / 2.),

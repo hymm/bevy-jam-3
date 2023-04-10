@@ -48,7 +48,7 @@ impl GoalBundle {
                     custom_size: Some(Vec2::new(15., 15.)),
                     ..default()
                 },
-                transform: Transform::from_translation(position.extend(0.0)),
+                transform: Transform::from_translation(position.extend(1.0)),
                 texture: texture.clone(),
                 ..default()
             },

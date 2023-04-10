@@ -90,7 +90,7 @@ impl PlayerBundle {
                     ..default()
                 },
                 texture,
-                transform: Transform::from_translation(spawn_point.extend(0.0)),
+                transform: Transform::from_translation(spawn_point.extend(1.0)),
                 ..default()
             },
             velocity: Velocity::default(),
