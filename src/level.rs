@@ -38,6 +38,7 @@ impl Default for Levels {
                 "learn_to_move".to_string(),
                 "box".to_string(),
                 "fall_for_it".to_string(),
+                "stairs".to_string(),
                 "3_die".to_string(),
                 "5_floating_boxes".to_string(),
             ],
