@@ -7,6 +7,7 @@ mod ground;
 mod level;
 mod physics;
 mod player;
+mod sfx;
 mod start_menu;
 mod win_screen;
 
@@ -20,6 +21,7 @@ use game_state::GameStatePlugin;
 use level::{Level, LevelPlugin};
 use physics::{PhysicsPlugin, PhysicsSettings};
 use player::PlayerPlugin;
+use sfx::SfxPlugin;
 use start_menu::StartMenuPlugin;
 use win_screen::WinScreenPlugin;
 
@@ -51,6 +53,7 @@ fn main() {
         .add_plugin(LevelPlugin)
         .add_plugin(PlayerPlugin)
         .add_plugin(WinScreenPlugin)
+        .add_plugin(SfxPlugin)
         .insert_resource(RapierConfiguration {
             timestep_mode: TimestepMode::Fixed {
                 dt: 1. / 60.,

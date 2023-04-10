@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
-use crate::player::Player;
+use crate::{player::Player, sfx::SfxHandles};
 
 pub struct GoalPlugin;
 impl Plugin for GoalPlugin {
@@ -64,11 +64,14 @@ fn goal_collision_detection(
     player: Query<Entity, With<Player>>,
     goals: Query<Entity, With<Goal>>,
     rapier: Res<RapierContext>,
+    audio: Res<Audio>,
+    sfx: Res<SfxHandles>,
 ) {
     for goal in &goals {
         for (entity1, entity2, _) in rapier.intersections_with(goal) {
             if player.contains(entity1) || player.contains(entity2) {
                 commands.entity(goal).despawn();
+                audio.play(sfx.goal.clone());
             }
         }
     }

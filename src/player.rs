@@ -8,6 +8,7 @@ use crate::{
     physics::{
         Acceleration, Direction, Gravity, GravityDirection, JumpState, PhysicsSettings, Velocity,
     },
+    sfx::SfxHandles,
 };
 
 pub struct PlayerPlugin;
@@ -117,6 +118,8 @@ fn control_jump(
         &ActionState<JumpAction>,
     )>,
     settings: Res<PhysicsSettings>,
+    audio: Res<Audio>,
+    sfx: Res<SfxHandles>,
 ) {
     for (mut v, mut jump_state, mut g, g_dir, action_state) in q.iter_mut() {
         if action_state.just_pressed(JumpAction::Jump) {
@@ -126,6 +129,7 @@ fn control_jump(
             v.0 -= settings.initial_jump_speed * g_dir.as_vec2();
             jump_state.on_ground = false;
             jump_state.turned_this_jump = false;
+            audio.play(sfx.jump.clone());
         }
 
         g.0 = if action_state.pressed(JumpAction::Jump) {
@@ -182,7 +186,12 @@ fn sprite_orientation(
     }
 }
 
-fn player_dies(q: Query<(Entity, &Transform), With<Player>>, mut commands: Commands) {
+fn player_dies(
+    q: Query<(Entity, &Transform), With<Player>>,
+    mut commands: Commands,
+    audio: Res<Audio>,
+    sfx: Res<SfxHandles>,
+) {
     for (e, t) in &q {
         if t.translation.y < -400.
             || t.translation.y > 400.
@@ -190,6 +199,7 @@ fn player_dies(q: Query<(Entity, &Transform), With<Player>>, mut commands: Comma
             || t.translation.x < -400.
         {
             commands.entity(e).despawn();
+            audio.play(sfx.death.clone());
         }
     }
 }
