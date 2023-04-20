@@ -103,15 +103,30 @@ fn restart(
 }
 
 fn skip_level(
+    mut commands: Commands,
     keyboard: Res<Input<KeyCode>>,
-    // mut levels: ResMut<Levels>,
     mut state: ResMut<NextState<GameState>>,
+    ldtk_entity: Query<(Entity, &Handle<LdtkAsset>)>,
+    ldtks: Res<Assets<LdtkAsset>>,
+    mut level_selection: ResMut<LevelSelection>,
 ) {
     if keyboard.just_pressed(KeyCode::Key0) {
-        if false {
-            state.set(GameState::LoadLevel);
+        if let LevelSelection::Index(index) = *level_selection {
+            let (e, h) = ldtk_entity.single();
+            let ldtk = ldtks.get(h).unwrap();
+
+            let (length, _) = ldtk.iter_levels().size_hint();
+            if index + 1 < length {
+                // go to next level
+                state.set(GameState::SpawnLevel);
+                *level_selection = LevelSelection::Index(index + 1);
+            } else {
+                // no more levels
+                commands.entity(e).despawn_recursive();
+                state.set(GameState::WinScreen);
+            }
         } else {
-            state.set(GameState::WinScreen);
+            panic!("Only LevelSelection::Index is supported");
         }
     }
 }
