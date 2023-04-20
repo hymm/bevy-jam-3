@@ -44,24 +44,46 @@ fn spawn_done(mut state: ResMut<NextState<GameState>>) {
     state.set(GameState::Playing);
 }
 
-fn level_complete(q: Query<(), With<Goal>>, mut state: ResMut<NextState<GameState>>) {
+fn level_complete(
+    mut commands: Commands,
+    q: Query<(), With<Goal>>,
+    mut state: ResMut<NextState<GameState>>,
+    ldtk_entity: Query<(Entity, &Handle<LdtkAsset>)>,
+    ldtks: Res<Assets<LdtkAsset>>,
+    mut level_selection: ResMut<LevelSelection>,
+) {
     if q.is_empty() {
-        if false {
-            todo!();
+        if let LevelSelection::Index(index) = *level_selection {
+            let (e, h) = ldtk_entity.single();
+            let ldtk = ldtks.get(h).unwrap();
+
+            let (length, _) = ldtk.iter_levels().size_hint();
+            if index + 1 < length {
+                // go to next level
+                state.set(GameState::SpawnLevel);
+                *level_selection = LevelSelection::Index(index + 1);
+            } else {
+                // no more levels
+                commands.entity(e).despawn_recursive();
+                state.set(GameState::WinScreen);
+            }
         } else {
-            state.set(GameState::WinScreen);
+            panic!("Only LevelSelection::Index is supported");
         }
     }
 }
 
 fn restart(
+    mut commands: Commands,
     keyboard: Res<Input<KeyCode>>,
     mut state: ResMut<NextState<GameState>>,
     mut level: ResMut<LevelSelection>,
+    ldtk: Query<Entity, With<Handle<LdtkAsset>>>,
 ) {
     if keyboard.pressed(KeyCode::Escape) {
         state.set(GameState::StartMenu);
         *level = LevelSelection::Index(0);
+        // commands.entity(ldtk.single()).despawn_recursive();
     }
 }
 
