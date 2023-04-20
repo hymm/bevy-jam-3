@@ -69,7 +69,7 @@ fn spawn_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
         MenuMarker,
         SpriteBundle {
             texture: asset_server.load("start-screen.png"),
-            transform: Transform::from_xyz(0., 0., 1.0),
+            transform: Transform::from_xyz(360., 360., 1.0),
             ..default()
         },
     ));

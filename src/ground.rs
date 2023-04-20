@@ -1,35 +1,30 @@
-use bevy::{prelude::*, sprite::Anchor};
+use bevy::prelude::*;
+use bevy_ecs_ldtk::{prelude::LdtkIntCellAppExt, LdtkIntCell};
 use bevy_rapier2d::prelude::*;
 
+use crate::game_state::GameState;
+
+pub struct GroundPlugin;
+impl Plugin for GroundPlugin {
+    fn build(&self, app: &mut App) {
+        app.register_ldtk_int_cell::<GroundBundle>(1)
+            .add_system(after_ground_spawned.in_schedule(OnEnter(GameState::SpawnLevel)));
+    }
+}
+
 // a ground entity
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct Ground;
 
-#[derive(Bundle)]
+#[derive(Bundle, LdtkIntCell, Default)]
 pub struct GroundBundle {
     ground: Ground,
-    #[bundle]
-    sprite: SpriteBundle,
     collider: Collider,
     // sensor: Sensor,
 }
 
-impl GroundBundle {
-    pub fn new(dimensions: Vec2, position: Vec2) -> GroundBundle {
-        GroundBundle {
-            ground: Ground,
-            sprite: SpriteBundle {
-                sprite: Sprite {
-                    custom_size: Some(dimensions),
-                    anchor: Anchor::Center,
-                    color: Color::rgb_u8(92, 114, 125),
-                    ..default()
-                },
-                transform: Transform::from_translation(position.extend(1.0)),
-                ..default()
-            },
-            collider: Collider::cuboid(dimensions.x / 2., dimensions.y / 2.),
-            // sensor: Sensor,
-        }
+fn after_ground_spawned(mut commands: Commands, q: Query<Entity, Added<Ground>>) {
+    for e in &q {
+        commands.entity(e).insert(Collider::cuboid(12.0, 12.0));
     }
 }

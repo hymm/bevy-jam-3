@@ -1,13 +1,12 @@
 use bevy::prelude::*;
+use bevy_ecs_ldtk::{prelude::LdtkEntityAppExt, LdtkEntity, LdtkLevel, Respawn};
 use bevy_rapier2d::prelude::Collider;
 use leafwing_input_manager::prelude::*;
 
 use crate::{
     constants::PLAYER_DIM,
     game_state::GameState,
-    physics::{
-        Acceleration, Direction, Gravity, GravityDirection, JumpState, PhysicsSettings, Velocity,
-    },
+    physics::{Acceleration, Gravity, GravityDirection, JumpState, PhysicsSettings, Velocity},
     sfx::SfxHandles,
 };
 
@@ -16,16 +15,18 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(InputManagerPlugin::<JumpAction>::default())
             .add_plugin(InputManagerPlugin::<MovementAction>::default())
+            .add_system(after_player_spawned.in_schedule(OnEnter(GameState::SpawnLevel)))
             .add_systems(
                 (
                     control_jump,
                     control_movement,
-                    player_dies,
                     sprite_orientation,
-                    reload,
+                    player_dies,
                 )
                     .in_set(GameState::Playing),
-            );
+            )
+            .add_startup_system(load_player_handle)
+            .register_ldtk_entity::<PlayerBundle>("Spawn_Point");
     }
 }
 
@@ -50,74 +51,47 @@ pub struct PlayerSprite {
     pub handle: Handle<Image>,
 }
 
-#[derive(Bundle)]
+#[derive(Bundle, LdtkEntity)]
 pub struct PlayerBundle {
     player: Player,
-    jump_action: InputManagerBundle<JumpAction>,
-    movement_action: InputManagerBundle<MovementAction>,
+    #[sprite_bundle("pixel-cat.png")]
     sprite: SpriteBundle,
     velocity: Velocity,
     acceleration: Acceleration,
     g_dir: GravityDirection,
     gravity: Gravity,
     jump_state: JumpState,
-    collider: Collider,
 }
 
-impl PlayerBundle {
-    pub fn new(texture: Handle<Image>, spawn_point: Vec2) -> PlayerBundle {
-        let mut jump_action_map = InputMap::new([(KeyCode::Space, JumpAction::Jump)]);
-        jump_action_map.insert(GamepadButtonType::South, JumpAction::Jump);
-
-        let mut movement_action_map = InputMap::new([
-            (KeyCode::A, MovementAction::Left),
-            (KeyCode::D, MovementAction::Right),
-            (KeyCode::W, MovementAction::Up),
-            (KeyCode::S, MovementAction::Down),
-            (KeyCode::Left, MovementAction::Left),
-            (KeyCode::Right, MovementAction::Right),
-            (KeyCode::Up, MovementAction::Up),
-            (KeyCode::Down, MovementAction::Down),
-        ]);
-        movement_action_map.insert_multiple([
-            (GamepadButtonType::DPadLeft, MovementAction::Left),
-            (GamepadButtonType::DPadRight, MovementAction::Right),
-            (GamepadButtonType::DPadUp, MovementAction::Up),
-            (GamepadButtonType::DPadDown, MovementAction::Down),
-        ]);
-
-        PlayerBundle {
-            player: Player,
-            jump_action: InputManagerBundle::<JumpAction> {
+fn after_player_spawned(mut commands: Commands, q: Query<Entity, Added<Player>>) {
+    for e in &q {
+        commands.entity(e).insert((
+            InputManagerBundle::<JumpAction> {
                 action_state: ActionState::default(),
-                input_map: jump_action_map,
+                input_map: InputMap::new([(KeyCode::Space, JumpAction::Jump)]),
             },
-            movement_action: InputManagerBundle::<MovementAction> {
+            InputManagerBundle::<MovementAction> {
                 action_state: ActionState::default(),
-                input_map: movement_action_map,
+                input_map: InputMap::new([
+                    (KeyCode::A, MovementAction::Left),
+                    (KeyCode::D, MovementAction::Right),
+                    (KeyCode::W, MovementAction::Up),
+                    (KeyCode::S, MovementAction::Down),
+                    (KeyCode::Left, MovementAction::Left),
+                    (KeyCode::Right, MovementAction::Right),
+                    (KeyCode::Up, MovementAction::Up),
+                    (KeyCode::Down, MovementAction::Down),
+                ]),
             },
-            sprite: SpriteBundle {
-                sprite: Sprite {
-                    custom_size: Some(PLAYER_DIM),
-                    ..default()
-                },
-                texture,
-                transform: Transform::from_translation(spawn_point.extend(1.0)),
-                ..default()
-            },
-            velocity: Velocity::default(),
-            acceleration: Acceleration::default(),
-            g_dir: GravityDirection(Direction::Down),
-            gravity: Gravity(0.0),
-            jump_state: JumpState {
-                on_ground: true,
-                turned_this_jump: false,
-                last_horizontal_movement_dir: Direction::Left,
-                last_vertical_movement_dir: Direction::Down,
-            },
-            collider: Collider::cuboid(PLAYER_DIM.x / 2., PLAYER_DIM.y / 2.),
-        }
+            Collider::cuboid(PLAYER_DIM.x / 2., PLAYER_DIM.y / 2.),
+        ));
     }
+}
+
+fn load_player_handle(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.insert_resource(PlayerSprite {
+        handle: asset_server.load("pixel-cat.png"),
+    })
 }
 
 fn control_jump(
@@ -198,25 +172,24 @@ fn sprite_orientation(
 }
 
 fn player_dies(
-    q: Query<(Entity, &Transform), With<Player>>,
+    player: Query<&Transform, With<Player>>,
     mut commands: Commands,
     audio: Res<Audio>,
     sfx: Res<SfxHandles>,
+    level: Query<Entity, With<Handle<LdtkLevel>>>,
+    mut state: ResMut<NextState<GameState>>,
 ) {
-    for (e, t) in &q {
-        if t.translation.y < -400.
-            || t.translation.y > 400.
-            || t.translation.x > 400.
-            || t.translation.x < -400.
+    for t in &player {
+        if t.translation.y < -100.
+            || t.translation.y > 800.
+            || t.translation.x > 800.
+            || t.translation.x < -100.
         {
-            commands.entity(e).despawn();
             audio.play(sfx.death.clone());
+            for e in &level {
+                commands.entity(e).insert(Respawn);
+            }
+            state.set(GameState::SpawnLevel);
         }
-    }
-}
-
-fn reload(q: Query<(), With<Player>>, mut state: ResMut<NextState<GameState>>) {
-    if q.is_empty() {
-        state.set(GameState::SpawnLevel);
     }
 }

@@ -18,7 +18,7 @@ fn spawn_win_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
         WinMarker,
         SpriteBundle {
             texture: asset_server.load("end-screen.png"),
-            transform: Transform::from_xyz(0., 0., 1.0),
+            transform: Transform::from_xyz(360., 360., 1.0),
             ..default()
         },
     ));

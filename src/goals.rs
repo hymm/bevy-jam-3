@@ -1,22 +1,25 @@
 use bevy::prelude::*;
+use bevy_ecs_ldtk::{prelude::LdtkEntityAppExt, LdtkEntity};
 use bevy_rapier2d::prelude::*;
 
-use crate::{player::Player, sfx::SfxHandles};
+use crate::{game_state::GameState, player::Player, sfx::SfxHandles};
 
 pub struct GoalPlugin;
 impl Plugin for GoalPlugin {
     fn build(&self, app: &mut App) {
         app.add_system(goal_collision_detection)
-            .add_startup_system(load_goal_images);
+            .add_system(after_goal_spawned.in_schedule(OnEnter(GameState::SpawnLevel)))
+            .add_startup_system(load_goal_images)
+            .register_ldtk_entity::<GoalBundle>("Goal");
     }
 }
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct Goal;
 
-#[derive(Bundle)]
+#[derive(Bundle, LdtkEntity, Default)]
 pub struct GoalBundle {
     goal: Goal,
-    #[bundle]
+    #[sprite_bundle("goal-mouse.png")]
     sprite: SpriteBundle,
     collider: Collider,
     active_events: ActiveEvents,
@@ -39,23 +42,12 @@ impl GoalHandles {
     }
 }
 
-impl GoalBundle {
-    pub fn new(position: &Vec2, texture: &Handle<Image>) -> GoalBundle {
-        GoalBundle {
-            goal: Goal,
-            sprite: SpriteBundle {
-                sprite: Sprite {
-                    custom_size: Some(Vec2::new(15., 15.)),
-                    ..default()
-                },
-                transform: Transform::from_translation(position.extend(1.0)),
-                texture: texture.clone(),
-                ..default()
-            },
-            collider: Collider::cuboid(7.5, 7.5),
-            active_events: ActiveEvents::COLLISION_EVENTS,
-            sensor: Sensor,
-        }
+fn after_goal_spawned(
+    mut commands: Commands,
+    mut q: Query<(Entity, &mut Handle<Image>), With<Goal>>,
+) {
+    for (e, mut h) in &mut q {
+        commands.entity(e).insert(Collider::cuboid(7.5, 7.5));
     }
 }
 

@@ -15,10 +15,12 @@ use crate::goals::GoalPlugin;
 use bevy::prelude::*;
 use bevy::window::WindowResolution;
 use bevy_common_assets::ron::RonAssetPlugin;
+use bevy_ecs_ldtk::LdtkPlugin;
 use bevy_rapier2d::prelude::*;
 use bevy_turborand::prelude::*;
 use game_state::GameStatePlugin;
-use level::{Level, LevelPlugin};
+use ground::GroundPlugin;
+use level::LevelPlugin;
 use physics::{PhysicsPlugin, PhysicsSettings};
 use player::PlayerPlugin;
 use sfx::SfxPlugin;
@@ -26,27 +28,40 @@ use start_menu::StartMenuPlugin;
 use win_screen::WinScreenPlugin;
 
 fn main() {
-    App::new()
-        .add_plugins(
-            DefaultPlugins
-                .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        title: "Cats Always Land on their Feet".to_string(),
-                        resolution: WindowResolution::new(720., 720.),
-                        ..default()
-                    }),
+    let mut app = App::new();
+    app.add_plugins(
+        DefaultPlugins
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "Cats Always Land on their Feet".to_string(),
+                    resolution: WindowResolution::new(720., 720.),
                     ..default()
-                })
-                .set(AssetPlugin {
-                    watch_for_changes: true,
-                    ..default()
-                })
-                .set(ImagePlugin::default_nearest()),
-        )
-        .add_plugin(RonAssetPlugin::<Level>::new(&["level.ron"]))
-        .add_plugin(RonAssetPlugin::<PhysicsSettings>::new(&["physics.ron"]))
-        .add_plugin(RngPlugin::default())
-        .add_plugin(GameStatePlugin)
+                }),
+                ..default()
+            })
+            .set(AssetPlugin {
+                watch_for_changes: true,
+                ..default()
+            })
+            .set(ImagePlugin::default_nearest()),
+    )
+    .add_plugin(RonAssetPlugin::<PhysicsSettings>::new(&["physics.ron"]))
+    .add_plugin(RngPlugin::default())
+    .insert_resource(RapierConfiguration {
+        timestep_mode: TimestepMode::Fixed {
+            dt: 1. / 60.,
+            substeps: 1,
+        },
+        ..Default::default()
+    })
+    .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.))
+    .add_plugin(RapierDebugRenderPlugin::default())
+    .insert_resource(FixedTime::new_from_secs(1.0 / 60.0));
+
+    app.add_plugin(LdtkPlugin);
+
+    app.add_plugin(GameStatePlugin)
+        .add_plugin(GroundPlugin)
         .add_plugin(StartMenuPlugin)
         .add_plugin(PhysicsPlugin)
         .add_plugin(GoalPlugin)
@@ -54,16 +69,6 @@ fn main() {
         .add_plugin(PlayerPlugin)
         .add_plugin(WinScreenPlugin)
         .add_plugin(SfxPlugin)
-        .insert_resource(RapierConfiguration {
-            timestep_mode: TimestepMode::Fixed {
-                dt: 1. / 60.,
-                substeps: 1,
-            },
-            ..Default::default()
-        })
-        .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.))
-        // .add_plugin(RapierDebugRenderPlugin::default())
-        .insert_resource(FixedTime::new_from_secs(1.0 / 60.0))
         .insert_resource(PhysicsSettings {
             initial_jump_speed: 400.0,
             gravity_pressed: 40.0,
@@ -76,12 +81,15 @@ fn main() {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn(Camera2dBundle {
+        transform: Transform::from_xyz(360.0, 360.0, 1000.0),
+        ..default()
+    });
 
     // background
     commands.spawn(SpriteBundle {
         texture: asset_server.load("bg.png"),
-        transform: Transform::from_xyz(0.0, 0.0, 0.0),
+        transform: Transform::from_xyz(360., 360., 0.),
         ..default()
     });
 }

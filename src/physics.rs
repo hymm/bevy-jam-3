@@ -29,13 +29,14 @@ impl Plugin for PhysicsPlugin {
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct PhysicsSet;
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct Gravity(pub f32);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Direction {
     Up,
     Down,
+    #[default]
     Left,
     Right,
 }
@@ -95,6 +96,12 @@ impl GravityDirection {
     }
 }
 
+impl Default for GravityDirection {
+    fn default() -> Self {
+        Self(Direction::Down)
+    }
+}
+
 #[derive(Component, Debug, Default, Deref, DerefMut)]
 pub struct Velocity(pub Vec2);
 
@@ -107,6 +114,17 @@ pub struct JumpState {
     pub turned_this_jump: bool,
     pub last_horizontal_movement_dir: Direction,
     pub last_vertical_movement_dir: Direction,
+}
+
+impl Default for JumpState {
+    fn default() -> JumpState {
+        JumpState {
+            on_ground: false,
+            turned_this_jump: false,
+            last_horizontal_movement_dir: Direction::Left,
+            last_vertical_movement_dir: Direction::Down,
+        }
+    }
 }
 
 #[derive(Resource, serde::Deserialize, TypeUuid, Debug, Clone)]
