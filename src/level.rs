@@ -47,12 +47,21 @@ fn spawn_done(mut state: ResMut<NextState<GameState>>) {
 fn level_complete(
     mut commands: Commands,
     q: Query<(), With<Goal>>,
+    mut ldtk_events: EventReader<AssetEvent<LdtkAsset>>,
     mut state: ResMut<NextState<GameState>>,
     ldtk_entity: Query<(Entity, &Handle<LdtkAsset>)>,
     ldtks: Res<Assets<LdtkAsset>>,
     mut level_selection: ResMut<LevelSelection>,
+    mut skip_level_done: Local<bool>,
 ) {
-    if q.is_empty() {
+    for e in &mut ldtk_events {
+        if let AssetEvent::Modified { handle: _ } = e {
+            state.set(GameState::LoadLevel);
+            *skip_level_done = true;
+            return;
+        }
+    }
+    if q.is_empty() && !*skip_level_done {
         if let LevelSelection::Index(index) = *level_selection {
             let (e, h) = ldtk_entity.single();
             let ldtk = ldtks.get(h).unwrap();
@@ -70,6 +79,8 @@ fn level_complete(
         } else {
             panic!("Only LevelSelection::Index is supported");
         }
+    } else if q.is_empty() {
+        *skip_level_done = false;
     }
 }
 
