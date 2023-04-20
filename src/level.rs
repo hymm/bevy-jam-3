@@ -8,7 +8,9 @@ impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(LevelSelection::Index(0));
 
-        app.add_system(restart);
+        app.add_system(
+            restart.run_if(in_state(GameState::Playing).or_else(in_state(GameState::WinScreen))),
+        );
 
         app.add_system(setup_ldtk.in_schedule(OnExit(GameState::StartMenu)))
             .add_system(check_load_status.run_if(in_state(GameState::LoadLevel)));
@@ -94,7 +96,9 @@ fn restart(
     if keyboard.pressed(KeyCode::Escape) {
         state.set(GameState::StartMenu);
         *level = LevelSelection::Index(0);
-        // commands.entity(ldtk.single()).despawn_recursive();
+        if !ldtk.is_empty() {
+            commands.entity(ldtk.single()).despawn_recursive();
+        }
     }
 }
 
