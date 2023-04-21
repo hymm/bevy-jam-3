@@ -703,7 +703,7 @@
 			"exportToToc": false,
 			"doc": null,
 			"width": 30,
-			"height": 20,
+			"height": 30,
 			"resizableX": false,
 			"resizableY": false,
 			"keepAspectRatio": false,
@@ -715,7 +715,7 @@
 			"renderMode": "Tile",
 			"showName": true,
 			"tilesetId": 4,
-			"tileRenderMode": "FitInside",
+			"tileRenderMode": "FullSizeCropped",
 			"tileRect": { "tilesetUid": 4, "x": 0, "y": 0, "w": 30, "h": 30 },
 			"nineSliceBorders": [],
 			"maxCount": 0,
@@ -863,20 +863,6 @@
 					"gridTiles": [],
 					"entityInstances": [
 						{
-							"__identifier": "Spawn_Point",
-							"__grid": [12,32],
-							"__pivot": [0,0],
-							"__tags": [],
-							"__tile": { "tilesetUid": 4, "x": 0, "y": 0, "w": 30, "h": 30 },
-							"__smartColor": "#BE4A2F",
-							"iid": "f30a9cf0-c640-11ed-8a82-5dff81779488",
-							"width": 30,
-							"height": 20,
-							"defUid": 99,
-							"px": [148,384],
-							"fieldInstances": []
-						},
-						{
 							"__identifier": "Goal",
 							"__grid": [42,33],
 							"__pivot": [0,0],
@@ -888,6 +874,20 @@
 							"height": 24,
 							"defUid": 101,
 							"px": [504,396],
+							"fieldInstances": []
+						},
+						{
+							"__identifier": "Spawn_Point",
+							"__grid": [12,32],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": { "tilesetUid": 4, "x": 0, "y": 0, "w": 30, "h": 30 },
+							"__smartColor": "#BE4A2F",
+							"iid": "dc847640-c640-11ed-8c76-69120826f39e",
+							"width": 30,
+							"height": 30,
+							"defUid": 99,
+							"px": [144,384],
 							"fieldInstances": []
 						}
 					]
@@ -1356,7 +1356,7 @@
 							"__smartColor": "#BE4A2F",
 							"iid": "34e57dd0-c640-11ed-bc2b-5140fe46a7e1",
 							"width": 30,
-							"height": 20,
+							"height": 30,
 							"defUid": 99,
 							"px": [348,432],
 							"fieldInstances": []
@@ -2430,7 +2430,7 @@
 							"__smartColor": "#BE4A2F",
 							"iid": "406efcc0-c640-11ed-bee9-d99bcdbb452c",
 							"width": 30,
-							"height": 20,
+							"height": 30,
 							"defUid": 99,
 							"px": [336,600],
 							"fieldInstances": []
@@ -2820,7 +2820,7 @@
 							"__smartColor": "#BE4A2F",
 							"iid": "9fc0fed0-c640-11ed-bee9-0b1ffad6480f",
 							"width": 30,
-							"height": 20,
+							"height": 30,
 							"defUid": 99,
 							"px": [48,72],
 							"fieldInstances": []
@@ -3496,9 +3496,9 @@
 							"__tags": [],
 							"__tile": { "tilesetUid": 4, "x": 0, "y": 0, "w": 30, "h": 30 },
 							"__smartColor": "#BE4A2F",
-							"iid": "0770c4b0-c640-11ed-bee9-093bc92bc704",
+							"iid": "b8a25310-c640-11ed-bee9-3d7a2231d975",
 							"width": 30,
-							"height": 20,
+							"height": 30,
 							"defUid": 99,
 							"px": [348,312],
 							"fieldInstances": []
@@ -4195,7 +4195,7 @@
 							"__smartColor": "#BE4A2F",
 							"iid": "f8be2510-c640-11ed-bee9-e54580fa7c90",
 							"width": 30,
-							"height": 20,
+							"height": 30,
 							"defUid": 99,
 							"px": [348,600],
 							"fieldInstances": []
@@ -4706,7 +4706,7 @@
 							"__smartColor": "#BE4A2F",
 							"iid": "8ee775a0-c640-11ed-bee9-a35a19420ca4",
 							"width": 30,
-							"height": 20,
+							"height": 30,
 							"defUid": 99,
 							"px": [348,552],
 							"fieldInstances": []
@@ -5197,7 +5197,7 @@
 							"__smartColor": "#BE4A2F",
 							"iid": "2a53aae0-c640-11ed-bee9-699988c34e6a",
 							"width": 30,
-							"height": 20,
+							"height": 30,
 							"defUid": 99,
 							"px": [348,240],
 							"fieldInstances": []
