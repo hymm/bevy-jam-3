@@ -14,11 +14,11 @@
 	"nextUid": 156,
 	"identifierStyle": "Capitalize",
 	"toc": [],
-	"worldLayout": "Free",
+	"worldLayout": "LinearHorizontal",
 	"worldGridWidth": 256,
 	"worldGridHeight": 256,
-	"defaultLevelWidth": 720,
-	"defaultLevelHeight": 720,
+	"defaultLevelWidth": 768,
+	"defaultLevelHeight": 768,
 	"defaultPivotX": 0,
 	"defaultPivotY": 0,
 	"defaultGridSize": 16,
@@ -1349,8 +1349,8 @@
 			"identifier": "Level_0",
 			"iid": "c5c2e3e0-c640-11ed-8a82-716b516c42bc",
 			"uid": 0,
-			"worldX": 0,
-			"worldY": 0,
+			"worldX": -1,
+			"worldY": -1,
 			"worldDepth": 0,
 			"pxWid": 720,
 			"pxHei": 720,
@@ -1828,14 +1828,14 @@
 					"entityInstances": []
 				}
 			],
-			"__neighbours": [{ "levelIid": "093aa190-c640-11ed-8a82-8144d08cac3c", "dir": "e" }]
+			"__neighbours": []
 		},
 		{
 			"identifier": "Level_1",
 			"iid": "093aa190-c640-11ed-8a82-8144d08cac3c",
 			"uid": 7,
-			"worldX": 720,
-			"worldY": 0,
+			"worldX": -1,
+			"worldY": -1,
 			"worldDepth": 0,
 			"pxWid": 720,
 			"pxHei": 720,
@@ -2787,115 +2787,14 @@
 					"entityInstances": []
 				}
 			],
-			"__neighbours": [ { "levelIid": "c5c2e3e0-c640-11ed-8a82-716b516c42bc", "dir": "w" }, { "levelIid": "0d86c2c0-c640-11ed-bee9-f3fe5c182426", "dir": "e" } ]
+			"__neighbours": []
 		},
 		{
 			"identifier": "Level_2",
-			"iid": "0d86c2c0-c640-11ed-bee9-f3fe5c182426",
-			"uid": 102,
-			"worldX": 1440,
-			"worldY": 0,
-			"worldDepth": 0,
-			"pxWid": 720,
-			"pxHei": 720,
-			"__bgColor": "#696A79",
-			"bgColor": null,
-			"useAutoIdentifier": true,
-			"bgRelPath": null,
-			"bgPos": null,
-			"bgPivotX": 0.5,
-			"bgPivotY": 0.5,
-			"__smartColor": "#ADADB5",
-			"__bgPos": null,
-			"externalRelPath": null,
-			"fieldInstances": [],
-			"layerInstances": [
-				{
-					"__identifier": "Entities",
-					"__type": "Entities",
-					"__cWid": 60,
-					"__cHei": 60,
-					"__gridSize": 12,
-					"__opacity": 1,
-					"__pxTotalOffsetX": 0,
-					"__pxTotalOffsetY": 0,
-					"__tilesetDefUid": null,
-					"__tilesetRelPath": null,
-					"iid": "0d86e9d0-c640-11ed-bee9-014e2187ba44",
-					"levelId": 102,
-					"layerDefUid": 100,
-					"pxOffsetX": 0,
-					"pxOffsetY": 0,
-					"visible": true,
-					"optionalRules": [],
-					"intGridCsv": [],
-					"autoLayerTiles": [],
-					"seed": 1219804,
-					"overrideTilesetUid": null,
-					"gridTiles": [],
-					"entityInstances": []
-				},
-				{
-					"__identifier": "Platforms",
-					"__type": "IntGrid",
-					"__cWid": 30,
-					"__cHei": 30,
-					"__gridSize": 24,
-					"__opacity": 1,
-					"__pxTotalOffsetX": 0,
-					"__pxTotalOffsetY": 0,
-					"__tilesetDefUid": 1,
-					"__tilesetRelPath": "../level-tiles.png",
-					"iid": "0d86e9d1-c640-11ed-bee9-551ce5214a68",
-					"levelId": 102,
-					"layerDefUid": 9,
-					"pxOffsetX": 0,
-					"pxOffsetY": 0,
-					"visible": true,
-					"optionalRules": [],
-					"intGridCsv": [
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-						0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-					],
-					"autoLayerTiles": [],
-					"seed": 7240694,
-					"overrideTilesetUid": null,
-					"gridTiles": [],
-					"entityInstances": []
-				}
-			],
-			"__neighbours": [ { "levelIid": "093aa190-c640-11ed-8a82-8144d08cac3c", "dir": "w" }, { "levelIid": "11240dc0-c640-11ed-bee9-f3050838dce2", "dir": "e" } ]
-		},
-		{
-			"identifier": "Level_3",
 			"iid": "11240dc0-c640-11ed-bee9-f3050838dce2",
 			"uid": 103,
-			"worldX": 2160,
-			"worldY": 0,
+			"worldX": -1,
+			"worldY": -1,
 			"worldDepth": 0,
 			"pxWid": 720,
 			"pxHei": 720,
@@ -3292,14 +3191,14 @@
 					"entityInstances": []
 				}
 			],
-			"__neighbours": [ { "levelIid": "0d86c2c0-c640-11ed-bee9-f3fe5c182426", "dir": "w" }, { "levelIid": "145b9210-c640-11ed-bee9-19d7d51ee0f9", "dir": "e" } ]
+			"__neighbours": []
 		},
 		{
-			"identifier": "Level_4",
+			"identifier": "Level_3",
 			"iid": "145b9210-c640-11ed-bee9-19d7d51ee0f9",
 			"uid": 104,
-			"worldX": 2880,
-			"worldY": 0,
+			"worldX": -1,
+			"worldY": -1,
 			"worldDepth": 0,
 			"pxWid": 720,
 			"pxHei": 720,
@@ -3921,14 +3820,14 @@
 					"entityInstances": []
 				}
 			],
-			"__neighbours": [ { "levelIid": "11240dc0-c640-11ed-bee9-f3050838dce2", "dir": "w" }, { "levelIid": "179d4f90-c640-11ed-bee9-0367d0358113", "dir": "e" } ]
+			"__neighbours": []
 		},
 		{
-			"identifier": "Level_5",
+			"identifier": "Level_4",
 			"iid": "179d4f90-c640-11ed-bee9-0367d0358113",
 			"uid": 105,
-			"worldX": 3600,
-			"worldY": 0,
+			"worldX": -1,
+			"worldY": -1,
 			"worldDepth": 0,
 			"pxWid": 720,
 			"pxHei": 720,
@@ -4660,14 +4559,14 @@
 					"entityInstances": []
 				}
 			],
-			"__neighbours": [ { "levelIid": "145b9210-c640-11ed-bee9-19d7d51ee0f9", "dir": "w" }, { "levelIid": "4ac40740-c640-11ed-bee9-25674b462363", "dir": "e" } ]
+			"__neighbours": []
 		},
 		{
-			"identifier": "Level_6",
+			"identifier": "Level_5",
 			"iid": "4ac40740-c640-11ed-bee9-25674b462363",
 			"uid": 106,
-			"worldX": 4320,
-			"worldY": 0,
+			"worldX": -1,
+			"worldY": -1,
 			"worldDepth": 0,
 			"pxWid": 720,
 			"pxHei": 720,
@@ -5101,14 +5000,14 @@
 					"entityInstances": []
 				}
 			],
-			"__neighbours": [ { "levelIid": "179d4f90-c640-11ed-bee9-0367d0358113", "dir": "w" }, { "levelIid": "4fba0470-c640-11ed-bee9-6d983c1dbd2b", "dir": "e" } ]
+			"__neighbours": []
 		},
 		{
-			"identifier": "Level_7",
+			"identifier": "Level_6",
 			"iid": "4fba0470-c640-11ed-bee9-6d983c1dbd2b",
 			"uid": 107,
-			"worldX": 5040,
-			"worldY": 0,
+			"worldX": -1,
+			"worldY": -1,
 			"worldDepth": 0,
 			"pxWid": 720,
 			"pxHei": 720,
@@ -5564,14 +5463,14 @@
 					"entityInstances": []
 				}
 			],
-			"__neighbours": [ { "levelIid": "4ac40740-c640-11ed-bee9-25674b462363", "dir": "w" }, { "levelIid": "cfeca980-c640-11ed-bee9-c920c9f017c4", "dir": "e" } ]
+			"__neighbours": []
 		},
 		{
-			"identifier": "Level_8",
+			"identifier": "Level_7",
 			"iid": "cfeca980-c640-11ed-bee9-c920c9f017c4",
 			"uid": 108,
-			"worldX": 5760,
-			"worldY": 0,
+			"worldX": -1,
+			"worldY": -1,
 			"worldDepth": 0,
 			"pxWid": 720,
 			"pxHei": 720,
@@ -6229,7 +6128,7 @@
 					"entityInstances": []
 				}
 			],
-			"__neighbours": [{ "levelIid": "4fba0470-c640-11ed-bee9-6d983c1dbd2b", "dir": "w" }]
+			"__neighbours": []
 		}
 	],
 	"worlds": []
