@@ -18,7 +18,7 @@ use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ecs_ldtk::LdtkPlugin;
 use bevy_rapier2d::prelude::*;
 use bevy_turborand::prelude::*;
-use game_state::{GameState, GameStatePlugin};
+use game_state::GameStatePlugin;
 use ground::GroundPlugin;
 use level::LevelPlugin;
 use physics::{PhysicsPlugin, PhysicsSettings};

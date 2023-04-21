@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy_ecs_ldtk::{prelude::LdtkEntityAppExt, LdtkEntity};
 use bevy_rapier2d::prelude::*;
+use bevy_turborand::{DelegatedRng, GlobalRng};
 
 use crate::{game_state::GameState, player::Player, sfx::SfxHandles};
 
@@ -45,9 +46,13 @@ impl GoalHandles {
 fn after_goal_spawned(
     mut commands: Commands,
     mut q: Query<(Entity, &mut Handle<Image>), With<Goal>>,
+    goal_handles: Res<GoalHandles>,
+    mut rand: ResMut<GlobalRng>,
 ) {
     for (e, mut h) in &mut q {
         commands.entity(e).insert(Collider::cuboid(7.5, 7.5));
+        let index = rand.u8(0..goal_handles.handles.len() as u8) as usize;
+        *h = goal_handles.handles[index].clone()
     }
 }
 
