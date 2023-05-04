@@ -1,5 +1,6 @@
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
+mod collisions;
 mod constants;
 mod game_state;
 mod goals;
@@ -18,6 +19,8 @@ use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ecs_ldtk::LdtkPlugin;
 use bevy_rapier2d::prelude::*;
 use bevy_turborand::prelude::*;
+use collisions::CollisionPlugin;
+use constants::CollisionTypes;
 use game_state::GameStatePlugin;
 use ground::GroundPlugin;
 use level::LevelPlugin;
@@ -69,6 +72,7 @@ fn main() {
         .add_plugin(PlayerPlugin)
         .add_plugin(WinScreenPlugin)
         .add_plugin(SfxPlugin)
+        .add_plugin(CollisionPlugin::<CollisionTypes>::new())
         .insert_resource(PhysicsSettings {
             initial_jump_speed: 400.0,
             gravity_pressed: 40.0,
