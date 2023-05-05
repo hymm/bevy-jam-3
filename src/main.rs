@@ -17,7 +17,6 @@ use bevy::prelude::*;
 use bevy::window::WindowResolution;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ecs_ldtk::LdtkPlugin;
-use bevy_rapier2d::prelude::*;
 use bevy_turborand::prelude::*;
 use collisions::CollisionPlugin;
 use constants::CollisionTypes;
@@ -50,15 +49,6 @@ fn main() {
     )
     .add_plugin(RonAssetPlugin::<PhysicsSettings>::new(&["physics.ron"]))
     .add_plugin(RngPlugin::default())
-    .insert_resource(RapierConfiguration {
-        timestep_mode: TimestepMode::Fixed {
-            dt: 1. / 60.,
-            substeps: 1,
-        },
-        ..Default::default()
-    })
-    .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.))
-    .add_plugin(RapierDebugRenderPlugin::default())
     .insert_resource(FixedTime::new_from_secs(1.0 / 60.0));
 
     app.add_plugin(LdtkPlugin);

@@ -1,9 +1,10 @@
+use crate::collisions::{CollisionEvents, Rect};
+use crate::constants::CollisionTypes;
 use bevy::prelude::*;
 use bevy_ecs_ldtk::{prelude::LdtkEntityAppExt, LdtkEntity};
-use bevy_rapier2d::prelude::*;
 use bevy_turborand::{DelegatedRng, GlobalRng};
 
-use crate::{game_state::GameState, player::Player, sfx::SfxHandles};
+use crate::{game_state::GameState, sfx::SfxHandles};
 
 pub struct GoalPlugin;
 impl Plugin for GoalPlugin {
@@ -22,9 +23,6 @@ pub struct GoalBundle {
     goal: Goal,
     #[sprite_bundle("goal-mouse.png")]
     sprite: SpriteBundle,
-    collider: Collider,
-    active_events: ActiveEvents,
-    sensor: Sensor,
 }
 
 #[derive(Resource, Default)]
@@ -50,7 +48,11 @@ fn after_goal_spawned(
     mut rand: ResMut<GlobalRng>,
 ) {
     for (e, mut h) in &mut q {
-        commands.entity(e).insert(Collider::cuboid(7.5, 7.5));
+        commands.entity(e).with_children(|children| {
+            children.spawn(Rect::new(15., 15.));
+        });
+
+        // set a random image
         let index = rand.u8(0..goal_handles.handles.len() as u8) as usize;
         *h = goal_handles.handles[index].clone()
     }
@@ -58,16 +60,14 @@ fn after_goal_spawned(
 
 fn goal_collision_detection(
     mut commands: Commands,
-    player: Query<Entity, With<Player>>,
-    goals: Query<Entity, With<Goal>>,
-    rapier: Res<RapierContext>,
+    mut goals: Query<(Entity, &mut CollisionEvents<CollisionTypes>), With<Goal>>,
     audio: Res<Audio>,
     sfx: Res<SfxHandles>,
 ) {
-    for goal in &goals {
-        for (entity1, entity2, _) in rapier.intersections_with(goal) {
-            if player.contains(entity1) || player.contains(entity2) {
-                commands.entity(goal).despawn();
+    for (entity, mut collision_events) in &mut goals {
+        for event in collision_events.buffer.drain(..) {
+            if event.user_type == CollisionTypes::Player {
+                commands.entity(entity).despawn();
                 audio.play(sfx.goal.clone());
             }
         }

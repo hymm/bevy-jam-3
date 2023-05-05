@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_ecs_ldtk::{prelude::LdtkEntityAppExt, LdtkEntity, LdtkLevel, Respawn};
-use bevy_rapier2d::prelude::Collider;
 use leafwing_input_manager::prelude::*;
 
 use crate::{
@@ -83,6 +82,7 @@ fn after_player_spawned(mut commands: Commands, q: Query<Entity, Added<Player>>)
                     (KeyCode::Down, MovementAction::Down),
                 ]),
             },
+            // TODO add player rays
             Collider::cuboid(PLAYER_DIM.x / 2., PLAYER_DIM.y / 2.),
         ));
     }

@@ -1,8 +1,11 @@
 use std::f32::consts::PI;
 
-use crate::{constants::PLAYER_DIM, ground::Ground};
+use crate::{
+    collisions::{CollisionData, CollisionEvents},
+    constants::{CollisionTypes, PLAYER_DIM},
+    ground::Ground,
+};
 use bevy::{prelude::*, reflect::TypeUuid};
-use bevy_rapier2d::prelude::{QueryFilter, RapierContext};
 
 pub struct PhysicsPlugin;
 impl Plugin for PhysicsPlugin {
@@ -11,6 +14,7 @@ impl Plugin for PhysicsPlugin {
             (
                 rotate_gravity,
                 ground_detection,
+                falling_detection,
                 apply_gravity,
                 apply_acceleration,
                 apply_velocity,
@@ -179,51 +183,79 @@ fn apply_acceleration(
     }
 }
 
+/// marker component for a ray that controls ground collisions
+#[derive(Component)]
+pub struct GroundRay;
+
+// check if falling entities are going to hit the ground
 fn ground_detection(
-    mut jumpers: Query<
-        (
-            Entity,
-            &mut JumpState,
-            &Velocity,
-            &mut Transform,
-            &GravityDirection,
-        ),
-        Without<Ground>,
-    >,
-    grounds: Query<Entity, With<Ground>>,
-    rapier: Res<RapierContext>,
+    mut jumpers: Query<(
+        &mut JumpState,
+        &Velocity,
+        &mut Transform,
+        &GlobalTransform,
+        &GravityDirection,
+        &mut CollisionEvents<CollisionTypes>,
+    )>,
     time: Res<FixedTime>,
 ) {
-    let character_height = PLAYER_DIM.y;
-    for (e, mut j, v, mut t, g) in &mut jumpers {
+    for (mut j, v, t, mut gt, g, ev) in &mut jumpers {
         // only check ground detection when moving in the same direction as gravity
-        if g.as_vec2().dot(v.0) < 0.0 {
+        if g.as_vec2().dot(v.0) < 0.0 || j.on_ground {
             continue;
         }
-        // left ray when gravity is down
-        let ray_origin_1 = t.translation.truncate();
-        let result = rapier.cast_ray_and_get_normal(
-            ray_origin_1,
-            g.as_vec2(),
-            character_height / 2. + 14.,
-            false,
-            QueryFilter::default().exclude_collider(e).exclude_sensors(),
-        );
 
-        if let Some((entity, intersect)) = result {
+        for event in ev.buffer {
+            if event.user_type != CollisionTypes::Ground {
+                continue;
+            }
+
+            let CollisionData::Ray(ray_data) = event.data else { continue; };
+
+            // calculate time until intersection
             let speed = g.as_vec2().dot(v.0);
+            let toi = ray_data.toi / speed;
 
-            // if speed == 0. {
-            //     return;
-            // }
-            // toi from rapier seems to be in pixels, so we convert
-            let toi = (intersect.toi - character_height / 2.) / speed;
-
-            if grounds.contains(entity) && toi < time.period.as_secs_f32() {
-                t.translation += g.as_vec2().extend(0.0) * (intersect.toi - character_height / 2.);
+            // if toi is less than a fixed time step
+            if toi < time.period.as_secs_f32() {
+                t.translation += g.as_vec2().extend(0.0) * ray_data.toi;
                 j.on_ground = true;
             }
-        } else {
+        }
+    }
+}
+
+fn check_parallel(a: Vec2, b: Vec2) -> bool {
+    a.x * b.y == a.y * b.x
+}
+
+// if all ground rays are not on the ground then the entity should be falling
+fn falling_detection(
+    mut jumpers: Query<(
+        &mut JumpState,
+        &CollisionEvents<CollisionTypes>,
+        &GravityDirection,
+    )>,
+) {
+    for (mut j, ev, g) in &mut jumpers {
+        if !j.on_ground {
+            continue;
+        }
+
+        let mut touching_ground = false;
+
+        for event in ev.buffer {
+            let CollisionData::Ray(ray_data) = event.data else { continue; };
+            // check if ray points "down" and intersects a ground collision
+            if event.user_type == CollisionTypes::Ground
+                && ray_data.ray_direction.angle_between(g.as_vec2()) == 0.0
+            {
+                touching_ground = true;
+                break;
+            }
+        }
+
+        if !touching_ground {
             j.on_ground = false;
         }
     }
@@ -231,39 +263,35 @@ fn ground_detection(
 
 fn side_collision_detection(
     mut movers: Query<
-        (Entity, &Velocity, &mut Transform, &GravityDirection),
-        (With<JumpState>, Without<Ground>),
+        (
+            &Velocity,
+            &mut Transform,
+            &GravityDirection,
+            &CollisionEvents<CollisionTypes>,
+        ),
+        With<JumpState>,
     >,
-    grounds: Query<Entity, With<Ground>>,
-    rapier: Res<RapierContext>,
     time: Res<FixedTime>,
 ) {
-    let character_width: f32 = PLAYER_DIM.x;
-    for (e, v, mut t, g) in &mut movers {
+    for (v, t, g, ev) in &mut movers {
         let h_move_vec =
             (g.forward().as_vec2().dot(v.0) * g.forward().as_vec2()).normalize_or_zero();
 
-        // left ray when gravity is down
-        let ray_origin_1 = t.translation.truncate();
-        let result = rapier.cast_ray_and_get_normal(
-            ray_origin_1,
-            h_move_vec,
-            character_width / 2. + 14.,
-            false,
-            QueryFilter::default().exclude_collider(e).exclude_sensors(),
-        );
+        for event in ev.buffer {
+            if let CollisionData::Ray(ray_data) = event.data {
+                // only check rays that point in the horizontal direction
+                if event.user_type != CollisionTypes::Ground
+                    || ray_data.ray_direction.perp_dot(h_move_vec) != 0.0
+                {
+                    continue;
+                }
 
-        if let Some((entity, intersect)) = result {
-            let speed = h_move_vec.dot(v.0);
+                let speed = h_move_vec.dot(v.0);
+                let toi = ray_data.toi / speed;
 
-            // if speed == 0. {
-            //     return;
-            // }
-            // toi from rapier seems to be in pixels, so we convert
-            let toi = (intersect.toi - character_width / 2.) / speed;
-
-            if grounds.contains(entity) && toi < time.period.as_secs_f32() {
-                t.translation += h_move_vec.extend(0.0) * (intersect.toi - character_width / 2.);
+                if toi < time.period.as_secs_f32() {
+                    t.translation += h_move_vec.extend(0.0) * (ray_data.toi / 2.);
+                }
             }
         }
     }
@@ -271,35 +299,29 @@ fn side_collision_detection(
 
 fn top_collision_detection(
     mut movers: Query<
-        (Entity, &Velocity, &mut Transform, &GravityDirection),
-        (With<JumpState>, Without<Ground>),
+        (
+            &mut Velocity,
+            &mut Transform,
+            &GravityDirection,
+            &CollisionEvents<CollisionTypes>,
+        ),
+        With<JumpState>,
     >,
-    grounds: Query<Entity, With<Ground>>,
-    rapier: Res<RapierContext>,
     time: Res<FixedTime>,
 ) {
-    let character_height: f32 = PLAYER_DIM.y;
-    for (e, v, mut t, g) in &mut movers {
+    for (mut v, mut t, g, ev) in &mut movers {
         let v_move_vec = g.reverse().as_vec2();
 
-        // left ray when gravity is down
-        let ray_origin_1 = t.translation.truncate();
-        let result = rapier.cast_ray_and_get_normal(
-            ray_origin_1,
-            v_move_vec,
-            character_height / 2. + 14.,
-            false,
-            QueryFilter::default().exclude_collider(e).exclude_sensors(),
-        );
-
-        if let Some((entity, intersect)) = result {
+        for event in ev.buffer {
+            if event.user_type != CollisionTypes::Ground {
+                continue;
+            }
+            let CollisionData::Ray(ray_data) = event.data else { continue; };
             let speed = v_move_vec.dot(v.0);
-
-            // toi from rapier seems to be in pixels, so we convert
-            let toi = (intersect.toi - character_height / 2.) / speed;
-
-            if grounds.contains(entity) && toi < time.period.as_secs_f32() {
-                t.translation += v_move_vec.extend(0.0) * (intersect.toi - character_height / 2.);
+            let toi = ray_data.toi / speed;
+            if toi < time.period.as_secs_f32() {
+                t.translation += v_move_vec.extend(0.0) * (ray_data.toi / 2.);
+                // TODO: set vertical velocity to zero
             }
         }
     }

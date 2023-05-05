@@ -4,27 +4,31 @@ use crate::physics::Direction;
 use bevy::{
     math::Vec3Swizzles,
     prelude::{
-        Component, CoreSet, Entity, GlobalTransform, IntoSystemConfig, IntoSystemSetConfig, Parent,
-        Plugin, Query, SystemSet, Vec2, Vec3, Without,
+        Component, CoreSet, Entity, GlobalTransform, IntoSystemConfig, IntoSystemSetConfig,
+        IntoSystemSetConfigs, Parent, Plugin, Query, SystemSet, Vec2, Vec3, Without,
     },
 };
 
 #[derive(Default)]
-pub struct CollisionPlugin<T: Component + CollisionType + Clone>(PhantomData<T>);
+pub struct CollisionPlugin<T: Component + Clone>(PhantomData<T>);
 impl<T> Plugin for CollisionPlugin<T>
 where
-    T: Component + CollisionType + Clone,
+    T: Component + Clone,
 {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.configure_set(CollisionEventChecking.in_base_set(CoreSet::PostUpdate))
-            .add_system(check_ray_to_box_collisons::<T>.in_set(CollisionEventChecking))
-            .add_system(check_box_to_box_collisons::<T>.in_set(CollisionEventChecking));
+        app.configure_sets(
+            (ProduceCollisionEvents, ConsumeCollisionEvents)
+                .chain()
+                .in_base_set(CoreSet::PostUpdate),
+        )
+        .add_system(check_ray_to_box_collisons::<T>.in_set(ProduceCollisionEvents))
+        .add_system(check_box_to_box_collisons::<T>.in_set(ProduceCollisionEvents));
     }
 }
 
 impl<T> CollisionPlugin<T>
 where
-    T: Component + CollisionType + Clone,
+    T: Component + Clone,
 {
     pub fn new() -> Self {
         Self(PhantomData::default())
@@ -32,7 +36,10 @@ where
 }
 
 #[derive(SystemSet, Eq, PartialEq, Hash, Debug, Clone)]
-pub struct CollisionEventChecking;
+pub struct ProduceCollisionEvents;
+
+#[derive(SystemSet, Eq, PartialEq, Hash, Debug, Clone)]
+pub struct ConsumeCollisionEvents;
 
 trait Shape {}
 
@@ -40,6 +47,11 @@ trait Shape {}
 #[derive(Component)]
 pub struct Rect(Vec2);
 impl Shape for Rect {} // TODO: make a derive macro for Shape
+impl Rect {
+    pub fn new(x: f32, y: f32) -> Self {
+        Self(Vec2::new(x, y))
+    }
+}
 
 /// `Transform` is the origin of the ray
 #[derive(Component)]
@@ -54,11 +66,6 @@ pub enum RectSide {
     Right,
     // one rect fully contained inside other
     Inside,
-}
-
-pub struct RectCollisionEvent {
-    pub side: RectSide,
-    pub collision_type: Box<dyn CollisionType + Send + Sync>,
 }
 
 pub fn collide_aabb(a_pos: Vec3, a_size: Vec2, b_pos: Vec3, b_size: Vec2) -> Option<RectSide> {
@@ -125,28 +132,25 @@ pub struct RayIntersection {
     // pub point: Vec2,
     /// normal at point of intersection
     pub normal: Vec2,
+    pub ray_origin: Vec2,
+    pub ray_direction: Vec2,
 }
 
-pub trait CollisionType {}
-
-pub struct RayCollisionEvent {
-    /// id of entity being collided with
+pub struct CollisionEvent<T> {
     pub entity: Entity,
-    ///
-    pub collision_type: Box<dyn CollisionType + Send + Sync>,
-    ///
-    pub intersection: RayIntersection,
+    pub user_type: T,
+    pub data: CollisionData,
 }
 
 /// the enum is the type of collider that detected the event
-pub enum CollisionEvent {
-    Ray(RayCollisionEvent),
-    Rect(RectCollisionEvent),
+pub enum CollisionData {
+    Ray(RayIntersection),
+    Rect(RectSide),
 }
 
 #[derive(Component)]
-pub struct CollisionEvents {
-    pub buffer: Vec<CollisionEvent>,
+pub struct CollisionEvents<T> {
+    pub buffer: Vec<CollisionEvent<T>>,
 }
 
 // algorithm adapted from here https://tavianator.com/2011/ray_box.html
@@ -170,18 +174,26 @@ fn raycast_to_box(
     let left = RayIntersection {
         normal: Direction::Left.as_vec2(),
         toi: t_bl.x,
+        ray_direction: ray.0,
+        ray_origin,
     };
     let right = RayIntersection {
         normal: Direction::Right.as_vec2(),
         toi: t_tr.x,
+        ray_direction: ray.0,
+        ray_origin,
     };
     let top = RayIntersection {
         normal: Direction::Up.as_vec2(),
         toi: t_tr.y,
+        ray_direction: ray.0,
+        ray_origin,
     };
     let bottom = RayIntersection {
         normal: Direction::Down.as_vec2(),
         toi: t_bl.y,
+        ray_direction: ray.0,
+        ray_origin,
     };
 
     let tmin = c_max(&c_min(&left, &right), &c_min(&top, &bottom));
@@ -206,10 +218,11 @@ fn raycast_to_box(
 pub fn check_ray_to_box_collisons<T>(
     rays: Query<(&Ray, &GlobalTransform, &Parent), Without<Rect>>,
     rects: Query<(&Rect, &GlobalTransform, &Parent, &T), Without<Ray>>,
-    mut collision_takers: Query<&mut CollisionEvents>,
+    mut collision_takers: Query<&mut CollisionEvents<T>>,
 ) where
-    T: Component + CollisionType + Clone,
+    T: Component + Clone,
 {
+    // TODO: need to apply the rotation from the globaltransform to the ray too. can probably just apply the full affine tranformation?
     for (ray, ray_origin, ray_owner) in &rays {
         for (rect, rect_center, rect_owner, t) in &rects {
             let collision = raycast_to_box(
@@ -223,11 +236,11 @@ pub fn check_ray_to_box_collisons<T>(
                     .get_mut(ray_owner.get())
                     .unwrap()
                     .buffer
-                    .push(CollisionEvent::Ray(RayCollisionEvent {
+                    .push(CollisionEvent {
                         entity: rect_owner.get(),
-                        collision_type: Box::new(t.clone()),
-                        intersection: collision,
-                    }));
+                        user_type: t.clone(),
+                        data: CollisionData::Ray(collision),
+                    });
             }
         }
     }
@@ -235,9 +248,9 @@ pub fn check_ray_to_box_collisons<T>(
 
 pub fn check_box_to_box_collisons<T>(
     rects: Query<(&Rect, &GlobalTransform, &Parent, &T)>,
-    mut collision_takers: Query<&mut CollisionEvents>,
+    mut collision_takers: Query<&mut CollisionEvents<T>>,
 ) where
-    T: Component + CollisionType + Clone,
+    T: Component + Clone,
 {
     for [(r1, t1, p1, _ct1), (r2, t2, _p2, ct2)] in rects.iter_combinations() {
         let collision = collide_aabb(t1.translation(), r1.0, t2.translation(), r2.0);
@@ -246,10 +259,11 @@ pub fn check_box_to_box_collisons<T>(
                 .get_mut(p1.get())
                 .unwrap()
                 .buffer
-                .push(CollisionEvent::Rect(RectCollisionEvent {
-                    side: collision,
-                    collision_type: Box::new(ct2.clone()),
-                }));
+                .push(CollisionEvent {
+                    entity: _p2.get(),
+                    user_type: ct2.clone(),
+                    data: CollisionData::Rect(collision),
+                });
         }
     }
 }
