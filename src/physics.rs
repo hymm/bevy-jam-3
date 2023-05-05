@@ -2,8 +2,7 @@ use std::f32::consts::PI;
 
 use crate::{
     collisions::{CollisionData, CollisionEvents},
-    constants::{CollisionTypes, PLAYER_DIM},
-    ground::Ground,
+    constants::CollisionTypes,
 };
 use bevy::{prelude::*, reflect::TypeUuid};
 
@@ -193,24 +192,23 @@ fn ground_detection(
         &mut JumpState,
         &Velocity,
         &mut Transform,
-        &GlobalTransform,
         &GravityDirection,
         &mut CollisionEvents<CollisionTypes>,
     )>,
     time: Res<FixedTime>,
 ) {
-    for (mut j, v, t, mut gt, g, ev) in &mut jumpers {
+    for (mut j, v, mut t, g, ev) in &mut jumpers {
         // only check ground detection when moving in the same direction as gravity
         if g.as_vec2().dot(v.0) < 0.0 || j.on_ground {
             continue;
         }
 
-        for event in ev.buffer {
+        for event in &ev.buffer {
             if event.user_type != CollisionTypes::Ground {
                 continue;
             }
 
-            let CollisionData::Ray(ray_data) = event.data else { continue; };
+            let CollisionData::Ray(ref ray_data) = event.data else { continue; };
 
             // calculate time until intersection
             let speed = g.as_vec2().dot(v.0);
@@ -223,10 +221,6 @@ fn ground_detection(
             }
         }
     }
-}
-
-fn check_parallel(a: Vec2, b: Vec2) -> bool {
-    a.x * b.y == a.y * b.x
 }
 
 // if all ground rays are not on the ground then the entity should be falling
@@ -244,8 +238,8 @@ fn falling_detection(
 
         let mut touching_ground = false;
 
-        for event in ev.buffer {
-            let CollisionData::Ray(ray_data) = event.data else { continue; };
+        for event in &ev.buffer {
+            let CollisionData::Ray(ref ray_data) = event.data else { continue; };
             // check if ray points "down" and intersects a ground collision
             if event.user_type == CollisionTypes::Ground
                 && ray_data.ray_direction.angle_between(g.as_vec2()) == 0.0
@@ -273,12 +267,12 @@ fn side_collision_detection(
     >,
     time: Res<FixedTime>,
 ) {
-    for (v, t, g, ev) in &mut movers {
+    for (v, mut t, g, ev) in &mut movers {
         let h_move_vec =
             (g.forward().as_vec2().dot(v.0) * g.forward().as_vec2()).normalize_or_zero();
 
-        for event in ev.buffer {
-            if let CollisionData::Ray(ray_data) = event.data {
+        for event in &ev.buffer {
+            if let CollisionData::Ray(ref ray_data) = event.data {
                 // only check rays that point in the horizontal direction
                 if event.user_type != CollisionTypes::Ground
                     || ray_data.ray_direction.perp_dot(h_move_vec) != 0.0
@@ -309,14 +303,14 @@ fn top_collision_detection(
     >,
     time: Res<FixedTime>,
 ) {
-    for (mut v, mut t, g, ev) in &mut movers {
+    for (v, mut t, g, ev) in &mut movers {
         let v_move_vec = g.reverse().as_vec2();
 
-        for event in ev.buffer {
+        for event in &ev.buffer {
             if event.user_type != CollisionTypes::Ground {
                 continue;
             }
-            let CollisionData::Ray(ray_data) = event.data else { continue; };
+            let CollisionData::Ray(ref ray_data) = event.data else { continue; };
             let speed = v_move_vec.dot(v.0);
             let toi = ray_data.toi / speed;
             if toi < time.period.as_secs_f32() {

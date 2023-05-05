@@ -1,4 +1,4 @@
-use crate::collisions::Rect;
+use crate::{collisions::RectBundle, constants::CollisionTypes};
 use bevy::prelude::*;
 use bevy_ecs_ldtk::{prelude::LdtkIntCellAppExt, LdtkIntCell};
 
@@ -23,8 +23,11 @@ pub struct GroundBundle {
 
 fn after_ground_spawned(mut commands: Commands, q: Query<Entity, Added<Ground>>) {
     for e in &q {
-        commands.entity(e).with_children(|children| {
-            children.spawn(Rect::new(24.0, 24.0));
-        });
+        commands
+            .entity(e)
+            .insert(CollisionTypes::Ground)
+            .with_children(|children| {
+                children.spawn(RectBundle::new(Vec2::new(24.0, 24.0)));
+            });
     }
 }

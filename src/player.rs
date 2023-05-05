@@ -3,9 +3,12 @@ use bevy_ecs_ldtk::{prelude::LdtkEntityAppExt, LdtkEntity, LdtkLevel, Respawn};
 use leafwing_input_manager::prelude::*;
 
 use crate::{
-    constants::PLAYER_DIM,
+    collisions::{RayBundle, CollisionEvents},
+    constants::{CollisionTypes, PLAYER_DIM},
     game_state::GameState,
-    physics::{Acceleration, Gravity, GravityDirection, JumpState, PhysicsSettings, Velocity},
+    physics::{
+        Acceleration, Direction, Gravity, GravityDirection, JumpState, PhysicsSettings, Velocity,
+    },
     sfx::SfxHandles,
 };
 
@@ -64,27 +67,73 @@ pub struct PlayerBundle {
 
 fn after_player_spawned(mut commands: Commands, q: Query<Entity, Added<Player>>) {
     for e in &q {
-        commands.entity(e).insert((
-            InputManagerBundle::<JumpAction> {
-                action_state: ActionState::default(),
-                input_map: InputMap::new([(KeyCode::Space, JumpAction::Jump)]),
-            },
-            InputManagerBundle::<MovementAction> {
-                action_state: ActionState::default(),
-                input_map: InputMap::new([
-                    (KeyCode::A, MovementAction::Left),
-                    (KeyCode::D, MovementAction::Right),
-                    (KeyCode::W, MovementAction::Up),
-                    (KeyCode::S, MovementAction::Down),
-                    (KeyCode::Left, MovementAction::Left),
-                    (KeyCode::Right, MovementAction::Right),
-                    (KeyCode::Up, MovementAction::Up),
-                    (KeyCode::Down, MovementAction::Down),
-                ]),
-            },
-            // TODO add player rays
-            Collider::cuboid(PLAYER_DIM.x / 2., PLAYER_DIM.y / 2.),
-        ));
+        commands
+            .entity(e)
+            .insert((
+                InputManagerBundle::<JumpAction> {
+                    action_state: ActionState::default(),
+                    input_map: InputMap::new([(KeyCode::Space, JumpAction::Jump)]),
+                },
+                InputManagerBundle::<MovementAction> {
+                    action_state: ActionState::default(),
+                    input_map: InputMap::new([
+                        (KeyCode::A, MovementAction::Left),
+                        (KeyCode::D, MovementAction::Right),
+                        (KeyCode::W, MovementAction::Up),
+                        (KeyCode::S, MovementAction::Down),
+                        (KeyCode::Left, MovementAction::Left),
+                        (KeyCode::Right, MovementAction::Right),
+                        (KeyCode::Up, MovementAction::Up),
+                        (KeyCode::Down, MovementAction::Down),
+                    ]),
+                },
+                CollisionTypes::Player,
+                CollisionEvents::<CollisionTypes>::new(),
+            ))
+            .with_children(|children| {
+                // spawn some ray colliders
+                const RAY_LENGTH: f32 = 10.0;
+
+                // point up
+                children.spawn(RayBundle::new(
+                    Direction::Up.as_vec2() * RAY_LENGTH,
+                    Vec2::new(-PLAYER_DIM.x / 2., PLAYER_DIM.y / 2.),
+                ));
+                children.spawn(RayBundle::new(
+                    Direction::Up.as_vec2() * RAY_LENGTH,
+                    Vec2::new(PLAYER_DIM.x / 2., PLAYER_DIM.y / 2.),
+                ));
+
+                // point down
+                children.spawn(RayBundle::new(
+                    Direction::Down.as_vec2() * RAY_LENGTH,
+                    Vec2::new(-PLAYER_DIM.x / 2., -PLAYER_DIM.y / 2.),
+                ));
+                children.spawn(RayBundle::new(
+                    Direction::Down.as_vec2() * RAY_LENGTH,
+                    Vec2::new(PLAYER_DIM.x / 2., -PLAYER_DIM.y / 2.),
+                ));
+
+                // point left
+                children.spawn(RayBundle::new(
+                    Direction::Left.as_vec2() * RAY_LENGTH,
+                    Vec2::new(-PLAYER_DIM.x / 2., PLAYER_DIM.y / 2.),
+                ));
+                children.spawn(RayBundle::new(
+                    Direction::Left.as_vec2() * RAY_LENGTH,
+                    Vec2::new(-PLAYER_DIM.x / 2., -PLAYER_DIM.y / 2.),
+                ));
+
+                // point right
+                children.spawn(RayBundle::new(
+                    Direction::Right.as_vec2() * RAY_LENGTH,
+                    Vec2::new(PLAYER_DIM.x / 2., PLAYER_DIM.y / 2.),
+                ));
+                children.spawn(RayBundle::new(
+                    Direction::Right.as_vec2() * RAY_LENGTH,
+                    Vec2::new(PLAYER_DIM.x / 2., -PLAYER_DIM.y / 2.),
+                ));
+            });
     }
 }
 

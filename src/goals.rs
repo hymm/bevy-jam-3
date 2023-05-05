@@ -1,4 +1,4 @@
-use crate::collisions::{CollisionEvents, Rect};
+use crate::collisions::{CollisionEvents, RectBundle};
 use crate::constants::CollisionTypes;
 use bevy::prelude::*;
 use bevy_ecs_ldtk::{prelude::LdtkEntityAppExt, LdtkEntity};
@@ -48,9 +48,15 @@ fn after_goal_spawned(
     mut rand: ResMut<GlobalRng>,
 ) {
     for (e, mut h) in &mut q {
-        commands.entity(e).with_children(|children| {
-            children.spawn(Rect::new(15., 15.));
-        });
+        commands
+            .entity(e)
+            .insert((
+                CollisionTypes::Goal,
+                CollisionEvents::<CollisionTypes>::new(),
+            ))
+            .with_children(|children| {
+                children.spawn(RectBundle::new(Vec2::new(15., 15.)));
+            });
 
         // set a random image
         let index = rand.u8(0..goal_handles.handles.len() as u8) as usize;

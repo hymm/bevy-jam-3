@@ -4,8 +4,9 @@ use crate::physics::Direction;
 use bevy::{
     math::Vec3Swizzles,
     prelude::{
-        Component, CoreSet, Entity, GlobalTransform, IntoSystemConfig, IntoSystemSetConfig,
-        IntoSystemSetConfigs, Parent, Plugin, Query, SystemSet, Vec2, Vec3, Without,
+        Bundle, Component, CoreSet, Entity, GlobalTransform, IntoSystemConfig,
+        IntoSystemSetConfigs, Parent, Plugin, Query, SpatialBundle, SystemSet, Transform, Vec2,
+        Vec3, Without,
     },
 };
 
@@ -16,13 +17,14 @@ where
     T: Component + Clone,
 {
     fn build(&self, app: &mut bevy::prelude::App) {
+        // TODO: need to repropagate transforms after
         app.configure_sets(
             (ProduceCollisionEvents, ConsumeCollisionEvents)
                 .chain()
                 .in_base_set(CoreSet::PostUpdate),
         )
-        .add_system(check_ray_to_box_collisons::<T>.in_set(ProduceCollisionEvents))
-        .add_system(check_box_to_box_collisons::<T>.in_set(ProduceCollisionEvents));
+        .add_system(check_ray_to_box_collisions::<T>.in_set(ProduceCollisionEvents))
+        .add_system(check_box_to_box_collisions::<T>.in_set(ProduceCollisionEvents));
     }
 }
 
@@ -44,19 +46,47 @@ pub struct ConsumeCollisionEvents;
 trait Shape {}
 
 /// Transform for a Box is the center.
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct Rect(Vec2);
 impl Shape for Rect {} // TODO: make a derive macro for Shape
-impl Rect {
-    pub fn new(x: f32, y: f32) -> Self {
-        Self(Vec2::new(x, y))
+
+#[derive(Bundle, Default)]
+pub struct RectBundle {
+    rect: Rect,
+    spatial_bundle: SpatialBundle,
+}
+
+impl RectBundle {
+    pub fn new(size: Vec2) -> RectBundle {
+        RectBundle {
+            rect: Rect(size),
+            spatial_bundle: SpatialBundle::default(),
+        }
     }
 }
 
 /// `Transform` is the origin of the ray
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct Ray(Vec2);
 impl Shape for Ray {}
+
+#[derive(Bundle, Default)]
+pub struct RayBundle {
+    ray: Ray,
+    spatial_bundle: SpatialBundle,
+}
+
+impl RayBundle {
+    pub fn new(ray: Vec2, origin: Vec2) -> RayBundle {
+        RayBundle {
+            ray: Ray(ray),
+            spatial_bundle: SpatialBundle {
+                transform: Transform::from_translation(origin.extend(0.0)),
+                ..SpatialBundle::default()
+            },
+        }
+    }
+}
 
 #[derive(Clone)]
 pub enum RectSide {
@@ -126,7 +156,7 @@ fn c_max(a: &RayIntersection, b: &RayIntersection) -> RayIntersection {
 
 #[derive(Clone)]
 pub struct RayIntersection {
-    /// distance until time of implact
+    /// distance until time of impact
     pub toi: f32,
     // /// point of intersection
     // pub point: Vec2,
@@ -151,6 +181,12 @@ pub enum CollisionData {
 #[derive(Component)]
 pub struct CollisionEvents<T> {
     pub buffer: Vec<CollisionEvent<T>>,
+}
+
+impl<T> CollisionEvents<T> {
+    pub fn new() -> CollisionEvents<T> {
+        CollisionEvents { buffer: Vec::new() }
+    }
 }
 
 // algorithm adapted from here https://tavianator.com/2011/ray_box.html
@@ -215,55 +251,53 @@ fn raycast_to_box(
     }
 }
 
-pub fn check_ray_to_box_collisons<T>(
+pub fn check_ray_to_box_collisions<T>(
     rays: Query<(&Ray, &GlobalTransform, &Parent), Without<Rect>>,
-    rects: Query<(&Rect, &GlobalTransform, &Parent, &T), Without<Ray>>,
+    rects: Query<(&Rect, &GlobalTransform, &Parent), Without<Ray>>,
     mut collision_takers: Query<&mut CollisionEvents<T>>,
+    user_types: Query<&T>,
 ) where
     T: Component + Clone,
 {
-    // TODO: need to apply the rotation from the globaltransform to the ray too. can probably just apply the full affine tranformation?
+    // TODO: need to apply the rotation from the `GlobalTransform` to the ray too. can probably just apply the full affine transformation?
     for (ray, ray_origin, ray_owner) in &rays {
-        for (rect, rect_center, rect_owner, t) in &rects {
-            let collision = raycast_to_box(
-                ray_origin.translation().xy(),
-                ray,
-                rect_center.translation().xy(),
-                rect,
-            );
-            if let Some(collision) = collision {
-                collision_takers
-                    .get_mut(ray_owner.get())
-                    .unwrap()
-                    .buffer
-                    .push(CollisionEvent {
+        for (rect, rect_center, rect_owner) in &rects {
+            if let Ok(mut collision_events) = collision_takers.get_mut(ray_owner.get()) {
+                let collision = raycast_to_box(
+                    ray_origin.translation().xy(),
+                    ray,
+                    rect_center.translation().xy(),
+                    rect,
+                );
+                if let Some(collision) = collision {
+                    collision_events.buffer.push(CollisionEvent {
                         entity: rect_owner.get(),
-                        user_type: t.clone(),
+                        user_type: user_types.get(rect_owner.get()).unwrap().clone(),
                         data: CollisionData::Ray(collision),
                     });
+                }
             }
         }
     }
 }
 
-pub fn check_box_to_box_collisons<T>(
-    rects: Query<(&Rect, &GlobalTransform, &Parent, &T)>,
+pub fn check_box_to_box_collisions<T>(
+    rects: Query<(&Rect, &GlobalTransform, &Parent)>,
+    user_types: Query<&T>,
     mut collision_takers: Query<&mut CollisionEvents<T>>,
 ) where
     T: Component + Clone,
 {
-    for [(r1, t1, p1, _ct1), (r2, t2, _p2, ct2)] in rects.iter_combinations() {
-        let collision = collide_aabb(t1.translation(), r1.0, t2.translation(), r2.0);
-        if let Some(collision) = collision {
-            collision_takers
-                .get_mut(p1.get())
-                .unwrap()
-                .buffer
-                .push(CollisionEvent {
-                    entity: _p2.get(),
-                    user_type: ct2.clone(),
+    for [(r1, t1, p1), (r2, t2, p2)] in rects.iter_combinations() {
+        if let Ok(mut collision_events) = collision_takers.get_mut(p1.get()) {
+            let collision = collide_aabb(t1.translation(), r1.0, t2.translation(), r2.0);
+            if let Some(collision) = collision {
+                collision_events.buffer.push(CollisionEvent {
+                    entity: p2.get(),
+                    user_type: user_types.get(p2.get()).unwrap().clone(),
                     data: CollisionData::Rect(collision),
                 });
+            }
         }
     }
 }
