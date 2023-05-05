@@ -4,11 +4,16 @@ use crate::physics::Direction;
 use bevy::{
     math::Vec3Swizzles,
     prelude::{
-        Bundle, Component, CoreSet, Entity, GlobalTransform, IntoSystemConfig,
-        IntoSystemSetConfigs, Parent, Plugin, Query, SpatialBundle, SystemSet, Transform, Vec2,
-        Vec3, Without,
+        Bundle, Color, Component, CoreSet, Entity, GlobalTransform, IntoSystemConfig,
+        IntoSystemConfigs, IntoSystemSetConfigs, Parent, Plugin, Query, ResMut, SpatialBundle,
+        SystemSet, Transform, Vec2, Vec3, Without,
+    },
+    transform::{
+        systems::{propagate_transforms, sync_simple_transforms},
+        TransformSystem::TransformPropagate,
     },
 };
+use bevy_prototype_debug_lines::{DebugLines, DebugLinesPlugin, DebugShapes};
 
 #[derive(Default)]
 pub struct CollisionPlugin<T: Component + Clone>(PhantomData<T>);
@@ -19,12 +24,26 @@ where
     fn build(&self, app: &mut bevy::prelude::App) {
         // TODO: need to repropagate transforms after
         app.configure_sets(
-            (ProduceCollisionEvents, ConsumeCollisionEvents)
+            (
+                CollisionSets::Produce,
+                CollisionSets::Consume,
+                CollisionSets::Repropagate,
+            )
                 .chain()
-                .in_base_set(CoreSet::PostUpdate),
+                .in_base_set(CoreSet::PostUpdate)
+                .after(TransformPropagate),
         )
-        .add_system(check_ray_to_box_collisions::<T>.in_set(ProduceCollisionEvents))
-        .add_system(check_box_to_box_collisions::<T>.in_set(ProduceCollisionEvents));
+        .add_system(cleanup_buffers::<T>.before(CollisionSets::Produce))
+        .add_systems(
+            (
+                check_ray_to_box_collisions::<T>,
+                check_box_to_box_collisions::<T>,
+            )
+                .in_set(CollisionSets::Produce),
+        )
+        .add_systems(
+            (propagate_transforms, sync_simple_transforms).in_set(CollisionSets::Repropagate),
+        );
     }
 }
 
@@ -38,10 +57,11 @@ where
 }
 
 #[derive(SystemSet, Eq, PartialEq, Hash, Debug, Clone)]
-pub struct ProduceCollisionEvents;
-
-#[derive(SystemSet, Eq, PartialEq, Hash, Debug, Clone)]
-pub struct ConsumeCollisionEvents;
+pub enum CollisionSets {
+    Produce,
+    Consume,
+    Repropagate,
+}
 
 trait Shape {}
 
@@ -299,5 +319,49 @@ pub fn check_box_to_box_collisions<T>(
                 });
             }
         }
+    }
+}
+
+fn cleanup_buffers<T>(mut buffers: Query<&mut CollisionEvents<T>>)
+where
+    T: Component + Clone,
+{
+    for mut events in &mut buffers {
+        events.buffer.clear();
+    }
+}
+
+pub struct CollisionDebugPlugin;
+impl Plugin for CollisionDebugPlugin {
+    fn build(&self, app: &mut bevy::prelude::App) {
+        app.add_plugin(DebugLinesPlugin::default()).add_system(
+            draw_collision_shapes
+                .in_base_set(CoreSet::PostUpdate)
+                .after(CollisionSets::Repropagate),
+        );
+    }
+}
+
+fn draw_collision_shapes(
+    mut lines: ResMut<DebugLines>,
+    mut shapes: ResMut<DebugShapes>,
+    rays: Query<(&Ray, &GlobalTransform)>,
+    rects: Query<(&Rect, &GlobalTransform)>,
+) {
+    for (r, t) in &rays {
+        lines.line_colored(
+            t.translation(),
+            t.translation() + r.0.extend(0.0),
+            0.0,
+            Color::RED,
+        );
+    }
+
+    for (size, t) in &rects {
+        shapes
+            .rect()
+            .size(size.0)
+            .position(t.translation())
+            .color(Color::RED);
     }
 }

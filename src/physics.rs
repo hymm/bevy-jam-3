@@ -11,7 +11,7 @@ impl Plugin for PhysicsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             (
-                rotate_gravity,
+                // rotate_gravity,
                 ground_detection,
                 falling_detection,
                 apply_gravity,
@@ -192,12 +192,13 @@ fn ground_detection(
         &mut JumpState,
         &Velocity,
         &mut Transform,
+        &GlobalTransform,
         &GravityDirection,
         &mut CollisionEvents<CollisionTypes>,
     )>,
     time: Res<FixedTime>,
 ) {
-    for (mut j, v, mut t, g, ev) in &mut jumpers {
+    for (mut j, v, mut t, gt, g, ev) in &mut jumpers {
         // only check ground detection when moving in the same direction as gravity
         if g.as_vec2().dot(v.0) < 0.0 || j.on_ground {
             continue;
@@ -216,7 +217,7 @@ fn ground_detection(
 
             // if toi is less than a fixed time step
             if toi < time.period.as_secs_f32() {
-                t.translation += g.as_vec2().extend(0.0) * ray_data.toi;
+                t.translation = gt.translation() + g.as_vec2().extend(0.0) * ray_data.toi;
                 j.on_ground = true;
             }
         }
@@ -284,7 +285,9 @@ fn side_collision_detection(
                 let toi = ray_data.toi / speed;
 
                 if toi < time.period.as_secs_f32() {
-                    t.translation += h_move_vec.extend(0.0) * (ray_data.toi / 2.);
+                    dbg!("side collision detected");
+                    dbg!(&ray_data.toi);
+                    t.translation += h_move_vec.extend(0.0) * ray_data.toi;
                 }
             }
         }

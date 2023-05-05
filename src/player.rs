@@ -92,7 +92,7 @@ fn after_player_spawned(mut commands: Commands, q: Query<Entity, Added<Player>>)
             ))
             .with_children(|children| {
                 // spawn some ray colliders
-                const RAY_LENGTH: f32 = 10.0;
+                const RAY_LENGTH: f32 = 15.0;
 
                 // point up
                 children.spawn(RayBundle::new(

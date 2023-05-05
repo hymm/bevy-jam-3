@@ -18,7 +18,7 @@ use bevy::window::WindowResolution;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ecs_ldtk::LdtkPlugin;
 use bevy_turborand::prelude::*;
-use collisions::CollisionPlugin;
+use collisions::{CollisionPlugin, CollisionDebugPlugin};
 use constants::CollisionTypes;
 use game_state::GameStatePlugin;
 use ground::GroundPlugin;
@@ -63,6 +63,7 @@ fn main() {
         .add_plugin(WinScreenPlugin)
         .add_plugin(SfxPlugin)
         .add_plugin(CollisionPlugin::<CollisionTypes>::new())
+        .add_plugin(CollisionDebugPlugin)
         .insert_resource(PhysicsSettings {
             initial_jump_speed: 400.0,
             gravity_pressed: 40.0,
