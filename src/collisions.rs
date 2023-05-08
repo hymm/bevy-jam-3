@@ -90,6 +90,76 @@ impl RectBundle {
 pub struct Ray(Vec2);
 impl Shape for Ray {}
 
+impl Ray {
+    // algorithm adapted from here https://tavianator.com/2011/ray_box.html
+    // may not handle collisions with corners correctly
+    fn intersect_aabb(
+        ray_origin: Vec2,
+        ray: &Ray,
+        box_center: Vec2,
+        box_size: &Rect,
+    ) -> Option<RayIntersection> {
+        // calculate vectors to corners of box from ray origin
+        let bottom_left = box_center - box_size.0 / 2.0 - ray_origin; // bottom left
+        let top_right = box_center + box_size.0 / 2.0 - ray_origin; // top right
+
+        // calculate intersections with extended lines of sides of box
+        // t is position along ray
+        let n_inv = ray.0.normalize().recip();
+        let t_tr = top_right * n_inv;
+        let t_bl = bottom_left * n_inv;
+
+        let left = RayIntersection {
+            normal: Direction::Left.as_vec2(),
+            point: Vec2::default(),
+            toi: t_bl.x,
+            ray_direction: ray.0,
+            ray_origin,
+        };
+        let right = RayIntersection {
+            normal: Direction::Right.as_vec2(),
+            point: Vec2::default(),
+            toi: t_tr.x,
+            ray_direction: ray.0,
+            ray_origin,
+        };
+        let top = RayIntersection {
+            normal: Direction::Up.as_vec2(),
+            point: Vec2::default(),
+            toi: t_tr.y,
+            ray_direction: ray.0,
+            ray_origin,
+        };
+        let bottom = RayIntersection {
+            normal: Direction::Down.as_vec2(),
+            point: Vec2::default(),
+            toi: t_bl.y,
+            ray_direction: ray.0,
+            ray_origin,
+        };
+
+        let mut tmin = c_max(&c_min(&left, &right), &c_min(&top, &bottom));
+        let mut tmax = c_min(&c_max(&left, &right), &c_max(&top, &bottom));
+
+        if (tmax.toi < tmin.toi) // ray misses box completely
+        || (tmin.toi < 0.0 && tmax.toi < 0.0) // points away from box
+        || (tmin.toi < 0.0 && tmax.toi > ray.0.length()) // contained inside box
+        || (tmin.toi > 0.0 && tmin.toi >= ray.0.length())
+        // ends before box
+        {
+            None
+        } else if tmin.toi >= 0.0 {
+            // ray collides from outside box
+            tmin.point = ray_origin + tmin.toi * ray.0.normalize();
+            Some(tmin)
+        } else {
+            // ray collides from inside box
+            tmax.point = ray_origin + tmax.toi * ray.0.normalize();
+            Some(tmax)
+        }
+    }
+}
+
 #[derive(Bundle, Default)]
 pub struct RayBundle {
     ray: Ray,
@@ -118,43 +188,109 @@ pub enum RectSide {
     Inside,
 }
 
-pub fn collide_aabb(a_pos: Vec3, a_size: Vec2, b_pos: Vec3, b_size: Vec2) -> Option<RectSide> {
-    let a_min = a_pos.truncate() - a_size / 2.0;
-    let a_max = a_pos.truncate() + a_size / 2.0;
+pub struct AabbIntersection {
+    /// penetration depth
+    delta: Vec2,
+    normal: Vec2,
+    position: Vec2,
+    time: f32,
+}
 
-    let b_min = b_pos.truncate() - b_size / 2.0;
-    let b_max = b_pos.truncate() + b_size / 2.0;
+impl Rect {
+    pub fn insersect_aabb(
+        &self,
+        self_pos: Vec2,
+        box_pos: Vec2,
+        box_size: Vec2,
+    ) -> Option<AabbIntersection> {
+        Self::intersect_aabb(self_pos, self.0, box_pos, box_size)
+    }
 
-    // check to see if the two rectangles are intersecting
-    if a_min.x < b_max.x && a_max.x > b_min.x && a_min.y < b_max.y && a_max.y > b_min.y {
-        // check to see if we hit on the left or right side
-        let (x_collision, x_depth) = if a_min.x < b_min.x && a_max.x > b_min.x && a_max.x < b_max.x
-        {
-            (RectSide::Left, b_min.x - a_max.x)
-        } else if a_min.x > b_min.x && a_min.x < b_max.x && a_max.x > b_max.x {
-            (RectSide::Right, a_min.x - b_max.x)
+    /// check whether 2 aabb's intersect with the separating axis test
+    pub fn intersect_aabb(
+        a_pos: Vec2,
+        a_size: Vec2,
+        b_pos: Vec2,
+        b_size: Vec2,
+    ) -> Option<AabbIntersection> {
+        let d = b_pos - a_pos;
+        let p = (b_size + a_size) / 2. - d.abs();
+
+        if p.x < 0. || p.y < 0. {
+            return None;
+        }
+
+        if p.x < p.y {
+            let sx = if d.x < 0. { -1. } else { 1. };
+
+            Some(AabbIntersection {
+                delta: Vec2::new(p.x * sx, 0.0),
+                normal: Vec2::new(sx, 0.0),
+                position: Vec2::new(a_pos.x + sx * a_size.x / 2.0, b_pos.y),
+                time: 0.0,
+            })
         } else {
-            (RectSide::Inside, -f32::INFINITY)
+            let sy = if d.y < 0. { -1. } else { 1. };
+
+            Some(AabbIntersection {
+                delta: Vec2::new(0.0, p.y * sy),
+                normal: Vec2::new(0.0, sy),
+                position: Vec2::new(b_pos.x, a_pos.y + sy * a_size.y / 2.0),
+                time: 0.0,
+            })
+        }
+    }
+}
+
+pub struct Sweep {
+    position: Vec2,
+    hit: Option<AabbIntersection>,
+    time: f32,
+}
+
+/// delta is vector between current a_pos and next a_pos
+fn sweepAABB(a_pos: Vec2, a_size: Vec2, b_pos: Vec2, b_size: Vec2, delta: Ray) -> Sweep {
+    if delta.0 == Vec2::ZERO {
+        let hit = Rect::intersect_aabb(a_pos, a_size, b_pos, b_size);
+        let time = if hit.is_none() { 1. } else { 0. };
+        return Sweep {
+            position: b_pos,
+            hit,
+            time,
         };
+    }
 
-        // check to see if we hit on the top or bottom side
-        let (y_collision, y_depth) = if a_min.y < b_min.y && a_max.y > b_min.y && a_max.y < b_max.y
-        {
-            (RectSide::Bottom, b_min.y - a_max.y)
-        } else if a_min.y > b_min.y && a_min.y < b_max.y && a_max.y > b_max.y {
-            (RectSide::Top, a_min.y - b_max.y)
-        } else {
-            (RectSide::Inside, -f32::INFINITY)
-        };
+    let hit = Ray::intersect_aabb(a_pos, &delta, b_pos, &Rect(b_size));
+    if let Some(hit) = hit {
+        // let time = (hit.toi - std::f32::EPSILON).clamp(0., 1.); // toi is probably % of length of ray
+        let position = b_pos + hit.toi;
+        let d_norm = delta.0.normalize();
+        let hit_pos =
+            (hit.point + d_norm * b_size / 2.).clamp(a_pos - a_size / 2., a_pos + a_size / 2.);
 
-        // if we had an "x" and a "y" collision, pick the "primary" side using penetration depth
-        if y_depth.abs() < x_depth.abs() {
-            Some(y_collision)
-        } else {
-            Some(x_collision)
+        Sweep {
+            position: hit_pos,
+            time: hit.toi,
+            hit: Some(AabbIntersection {
+                delta: (),
+                normal: hit.normal,
+                position: hit.point,
+                time: hit.toi,
+            }),
         }
     } else {
-        None
+        let hit_pos = b_pos + delta.0;
+        let time = 1.;
+        Sweep {
+            position: hit_pos,
+            time,
+            hit: Some(AabbIntersection {
+                delta: (),
+                normal: (),
+                position: (),
+                time: (),
+            }),
+        }
     }
 }
 
@@ -178,8 +314,8 @@ fn c_max(a: &RayIntersection, b: &RayIntersection) -> RayIntersection {
 pub struct RayIntersection {
     /// distance until time of impact
     pub toi: f32,
-    // /// point of intersection
-    // pub point: Vec2,
+    /// point of intersection
+    pub point: Vec2,
     /// normal at point of intersection
     pub normal: Vec2,
     pub ray_origin: Vec2,
@@ -209,68 +345,6 @@ impl<T> CollisionEvents<T> {
     }
 }
 
-// algorithm adapted from here https://tavianator.com/2011/ray_box.html
-// may not handle collisions with corners correctly
-fn raycast_to_box(
-    ray_origin: Vec2,
-    ray: &Ray,
-    box_center: Vec2,
-    box_size: &Rect,
-) -> Option<RayIntersection> {
-    // calculate vectors to corners of box from ray origin
-    let bottom_left = box_center - box_size.0 / 2.0 - ray_origin; // bottom left
-    let top_right = box_center + box_size.0 / 2.0 - ray_origin; // top right
-
-    // calculate intersections with extended lines of sides of box
-    // t is position along ray
-    let n_inv = ray.0.normalize().recip();
-    let t_tr = top_right * n_inv;
-    let t_bl = bottom_left * n_inv;
-
-    let left = RayIntersection {
-        normal: Direction::Left.as_vec2(),
-        toi: t_bl.x,
-        ray_direction: ray.0,
-        ray_origin,
-    };
-    let right = RayIntersection {
-        normal: Direction::Right.as_vec2(),
-        toi: t_tr.x,
-        ray_direction: ray.0,
-        ray_origin,
-    };
-    let top = RayIntersection {
-        normal: Direction::Up.as_vec2(),
-        toi: t_tr.y,
-        ray_direction: ray.0,
-        ray_origin,
-    };
-    let bottom = RayIntersection {
-        normal: Direction::Down.as_vec2(),
-        toi: t_bl.y,
-        ray_direction: ray.0,
-        ray_origin,
-    };
-
-    let tmin = c_max(&c_min(&left, &right), &c_min(&top, &bottom));
-    let tmax = c_min(&c_max(&left, &right), &c_max(&top, &bottom));
-
-    if (tmax.toi < tmin.toi) // ray misses box completely
-        || (tmin.toi < 0.0 && tmax.toi < 0.0) // points away from box
-        || (tmin.toi < 0.0 && tmax.toi > ray.0.length()) // contained inside box
-        || (tmin.toi > 0.0 && tmin.toi >= ray.0.length())
-    // ends before box
-    {
-        None
-    } else if tmin.toi >= 0.0 {
-        // ray collides from outside box
-        Some(tmin)
-    } else {
-        // ray collides from inside box
-        Some(tmax)
-    }
-}
-
 pub fn check_ray_to_box_collisions<T>(
     rays: Query<(&Ray, &GlobalTransform, &Parent), Without<Rect>>,
     rects: Query<(&Rect, &GlobalTransform, &Parent), Without<Ray>>,
@@ -283,7 +357,7 @@ pub fn check_ray_to_box_collisions<T>(
     for (ray, ray_origin, ray_owner) in &rays {
         for (rect, rect_center, rect_owner) in &rects {
             if let Ok(mut collision_events) = collision_takers.get_mut(ray_owner.get()) {
-                let collision = raycast_to_box(
+                let collision = Ray::intersect_aabb(
                     ray_origin.translation().xy(),
                     ray,
                     rect_center.translation().xy(),
@@ -310,7 +384,12 @@ pub fn check_box_to_box_collisions<T>(
 {
     for [(r1, t1, p1), (r2, t2, p2)] in rects.iter_combinations() {
         if let Ok(mut collision_events) = collision_takers.get_mut(p1.get()) {
-            let collision = collide_aabb(t1.translation(), r1.0, t2.translation(), r2.0);
+            let collision = Rect::intersect_aabb(
+                t1.translation().truncate(),
+                r1.0,
+                t2.translation().truncate(),
+                r2.0,
+            );
             if let Some(collision) = collision {
                 collision_events.buffer.push(CollisionEvent {
                     entity: p2.get(),

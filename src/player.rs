@@ -3,7 +3,7 @@ use bevy_ecs_ldtk::{prelude::LdtkEntityAppExt, LdtkEntity, LdtkLevel, Respawn};
 use leafwing_input_manager::prelude::*;
 
 use crate::{
-    collisions::{RayBundle, CollisionEvents},
+    collisions::{RayBundle, CollisionEvents, RectBundle},
     constants::{CollisionTypes, PLAYER_DIM},
     game_state::GameState,
     physics::{
@@ -93,17 +93,6 @@ fn after_player_spawned(mut commands: Commands, q: Query<Entity, Added<Player>>)
             .with_children(|children| {
                 // spawn some ray colliders
                 const RAY_LENGTH: f32 = 15.0;
-
-                // point up
-                children.spawn(RayBundle::new(
-                    Direction::Up.as_vec2() * RAY_LENGTH,
-                    Vec2::new(-PLAYER_DIM.x / 2., PLAYER_DIM.y / 2.),
-                ));
-                children.spawn(RayBundle::new(
-                    Direction::Up.as_vec2() * RAY_LENGTH,
-                    Vec2::new(PLAYER_DIM.x / 2., PLAYER_DIM.y / 2.),
-                ));
-
                 // point down
                 children.spawn(RayBundle::new(
                     Direction::Down.as_vec2() * RAY_LENGTH,
@@ -114,25 +103,8 @@ fn after_player_spawned(mut commands: Commands, q: Query<Entity, Added<Player>>)
                     Vec2::new(PLAYER_DIM.x / 2., -PLAYER_DIM.y / 2.),
                 ));
 
-                // point left
-                children.spawn(RayBundle::new(
-                    Direction::Left.as_vec2() * RAY_LENGTH,
-                    Vec2::new(-PLAYER_DIM.x / 2., PLAYER_DIM.y / 2.),
-                ));
-                children.spawn(RayBundle::new(
-                    Direction::Left.as_vec2() * RAY_LENGTH,
-                    Vec2::new(-PLAYER_DIM.x / 2., -PLAYER_DIM.y / 2.),
-                ));
-
-                // point right
-                children.spawn(RayBundle::new(
-                    Direction::Right.as_vec2() * RAY_LENGTH,
-                    Vec2::new(PLAYER_DIM.x / 2., PLAYER_DIM.y / 2.),
-                ));
-                children.spawn(RayBundle::new(
-                    Direction::Right.as_vec2() * RAY_LENGTH,
-                    Vec2::new(PLAYER_DIM.x / 2., -PLAYER_DIM.y / 2.),
-                ));
+                // spawn hit box used for player collisions with wall and goals
+                children.spawn(RectBundle::new(PLAYER_DIM));
             });
     }
 }
@@ -140,7 +112,7 @@ fn after_player_spawned(mut commands: Commands, q: Query<Entity, Added<Player>>)
 fn load_player_handle(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(PlayerSprite {
         handle: asset_server.load("pixel-cat.png"),
-    })
+    });
 }
 
 fn control_jump(

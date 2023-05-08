@@ -12,7 +12,7 @@ impl Plugin for PhysicsPlugin {
         app.add_systems(
             (
                 // rotate_gravity,
-                ground_detection,
+                faller_ground_detection,
                 falling_detection,
                 apply_gravity,
                 apply_acceleration,
@@ -187,7 +187,7 @@ fn apply_acceleration(
 pub struct GroundRay;
 
 // check if falling entities are going to hit the ground
-fn ground_detection(
+fn faller_ground_detection(
     mut jumpers: Query<(
         &mut JumpState,
         &Velocity,
@@ -254,6 +254,16 @@ fn falling_detection(
             j.on_ground = false;
         }
     }
+}
+
+
+fn mover_ground_detection(
+    mut movers: Query<(
+        &CollisionEvents<CollisionTypes>,
+        &GravityDirection,
+    ), With<JumpState>>
+) {
+    
 }
 
 fn side_collision_detection(
