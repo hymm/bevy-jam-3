@@ -6,7 +6,7 @@ use bevy::{
     prelude::{
         Bundle, Color, Component, CoreSet, Entity, GlobalTransform, IntoSystemConfig,
         IntoSystemConfigs, IntoSystemSetConfigs, Parent, Plugin, Query, ResMut, SpatialBundle,
-        SystemSet, Transform, Vec2, Vec3, Without,
+        SystemSet, Transform, Vec2, Without,
     },
     transform::{
         systems::{propagate_transforms, sync_simple_transforms},
@@ -178,16 +178,6 @@ impl RayBundle {
     }
 }
 
-#[derive(Clone)]
-pub enum RectSide {
-    Top,
-    Bottom,
-    Left,
-    Right,
-    // one rect fully contained inside other
-    Inside,
-}
-
 #[derive(PartialEq, Debug)]
 pub struct AabbIntersection {
     /// penetration depth
@@ -197,20 +187,20 @@ pub struct AabbIntersection {
 }
 
 impl Rect {
-    pub fn insersect_aabb(
+    pub fn intersect_aabb(
         &self,
         self_pos: Vec2,
         box_pos: Vec2,
         box_size: Vec2,
     ) -> Option<AabbIntersection> {
-        Self::intersect_aabb(self_pos, self.0, box_pos, box_size)
+        Self::inter_aabb(self_pos, self.0, box_pos, box_size)
     }
 
     /// check whether 2 aabb's intersect with the separating axis test
     /// `AabbInterssection::normal` normal on `a` aabb that collision happens.
     /// `AabbInterssection::point` point on `a` aabb that collision happens.
     /// `AabbInterssection::delta` add delta to b_pos to make colliders just touch.
-    pub fn intersect_aabb(
+    pub fn inter_aabb(
         a_pos: Vec2,
         a_size: Vec2,
         b_pos: Vec2,
@@ -241,52 +231,57 @@ impl Rect {
             })
         }
     }
-}
 
-pub struct Sweep {
-    position: Vec2,
-    hit: Option<AabbIntersection>,
-    time: f32,
-}
+    /// delta is vector between current a_pos and next a_pos
+    pub fn sweep_aabb(
+        a_pos: Vec2,
+        a_size: Vec2,
+        b_pos: Vec2,
+        b_size: Vec2,
+        delta: Vec2,
+    ) -> Option<Sweep> {
+        if delta == Vec2::ZERO {
+            let hit = Rect::inter_aabb(b_pos, b_size, a_pos, a_size);
+            if let Some(hit) = hit {
+                return Some(Sweep {
+                    position: a_pos - hit.delta,
+                    time: 0.,
+                    normal: hit.normal,
+                });
+            } else {
+                return None;
+            }
+        }
 
-/// delta is vector between current a_pos and next a_pos
-fn sweepAABB(a_pos: Vec2, a_size: Vec2, b_pos: Vec2, b_size: Vec2, delta: Ray) -> Sweep {
-    if delta.0 == Vec2::ZERO {
-        let hit = Rect::intersect_aabb(a_pos, a_size, b_pos, b_size);
-        let time = if hit.is_none() { 1. } else { 0. };
-        return Sweep {
-            position: b_pos,
-            hit,
-            time,
-        };
-    }
+        let hit = Ray::intersect_aabb(a_pos, &Ray(delta), b_pos, &Rect(b_size + a_size));
+        if let Some(hit) = hit {
+            // let time = (hit.toi - std::f32::EPSILON).clamp(0., 1.); // toi is probably % of length of ray
+            let position = a_pos + hit.toi * delta.normalize();
+            // let d_norm = delta.normalize();
+            // let hit_pos =
+            //     (hit.point + d_norm * b_size / 2.).clamp(a_pos - a_size / 2., a_pos + a_size / 2.);
 
-    let hit = Ray::intersect_aabb(a_pos, &delta, b_pos, &Rect(b_size));
-    if let Some(hit) = hit {
-        // let time = (hit.toi - std::f32::EPSILON).clamp(0., 1.); // toi is probably % of length of ray
-        let position = b_pos + hit.toi;
-        let d_norm = delta.0.normalize();
-        let hit_pos =
-            (hit.point + d_norm * b_size / 2.).clamp(a_pos - a_size / 2., a_pos + a_size / 2.);
-
-        Sweep {
-            position,
-            time: hit.toi,
-            hit: Some(AabbIntersection {
-                delta: delta.0,
+            Some(Sweep {
+                position,
+                time: hit.toi,
                 normal: hit.normal,
-                point: hit_pos,
-            }),
-        }
-    } else {
-        let hit_pos = b_pos + delta.0;
-        let time = 1.;
-        Sweep {
-            position: hit_pos,
-            time,
-            hit: None,
+            })
+        } else {
+            None
         }
     }
+}
+
+/// result for sweep aabb test
+#[derive(PartialEq, Debug)]
+pub struct Sweep {
+    // position of `a` aabb for sweep test that keeps object outside of collider
+    pub position: Vec2,
+    // distance along cast ray for collision
+    pub time: f32,
+    // normal of surface that is collided
+    pub normal: Vec2,
+    // hit: Option<AabbIntersection>,
 }
 
 fn c_min(a: &RayIntersection, b: &RayIntersection) -> RayIntersection {
@@ -317,6 +312,12 @@ pub struct RayIntersection {
     pub ray_direction: Vec2,
 }
 
+#[derive(Component, Default, Clone, Copy, Debug)]
+pub struct PositionDelta {
+    pub origin: Vec2,
+    pub ray: Vec2,
+}
+
 pub struct CollisionEvent<T> {
     pub entity: Entity,
     pub user_type: T,
@@ -326,7 +327,7 @@ pub struct CollisionEvent<T> {
 /// the enum is the type of collider that detected the event
 pub enum CollisionData {
     Ray(RayIntersection),
-    Aabb(AabbIntersection),
+    Aabb(Sweep),
 }
 
 #[derive(Component)]
@@ -370,21 +371,22 @@ pub fn check_ray_to_box_collisions<T>(
     }
 }
 
+// todo: should only check for rects that are interactable? i.e. don't check ground-ground interactions somehow
+// maybe just need collision layers
 pub fn check_box_to_box_collisions<T>(
     rects: Query<(&Rect, &GlobalTransform, &Parent)>,
     user_types: Query<&T>,
-    mut collision_takers: Query<&mut CollisionEvents<T>>,
+    mut collision_takers: Query<(&mut CollisionEvents<T>, Option<&PositionDelta>)>,
 ) where
     T: Component + Clone,
 {
     for [(r1, t1, p1), (r2, t2, p2)] in rects.iter_combinations() {
-        if let Ok(mut collision_events) = collision_takers.get_mut(p1.get()) {
-            let collision = Rect::intersect_aabb(
-                t1.translation().truncate(),
-                r1.0,
-                t2.translation().truncate(),
-                r2.0,
-            );
+        if let Ok((mut collision_events, d)) = collision_takers.get_mut(p1.get()) {
+            let PositionDelta { origin, ray } = d.map(|d| *d).unwrap_or(PositionDelta {
+                origin: t1.translation().truncate(),
+                ray: Vec2::ZERO,
+            });
+            let collision = Rect::sweep_aabb(origin, r1.0, t2.translation().truncate(), r2.0, ray);
             if let Some(collision) = collision {
                 collision_events.buffer.push(CollisionEvent {
                     entity: p2.get(),
@@ -449,7 +451,7 @@ mod tests {
         use crate::collisions::{AabbIntersection, Rect};
 
         #[test]
-        fn detects_collisions() {
+        fn detects_collision() {
             let collisions = [
                 ("right", [4., 0.], ([1., 0.], [1., 0.], [3., 0.])),
                 ("left", [-4., 0.], ([-1., 0.], [-1., 0.], [-3., 0.])),
@@ -474,7 +476,7 @@ mod tests {
                 ),
             ];
             for col in collisions {
-                let result = Rect::intersect_aabb(
+                let result = Rect::inter_aabb(
                     Vec2::new(0., 0.),
                     Vec2::new(6., 6.),
                     Vec2::from_array(col.1),
@@ -498,13 +500,69 @@ mod tests {
         fn does_not_detect_collsions() {
             let not_collisions = [("right", [6., 0.]), ("top", [0., 6.])];
             for col in not_collisions {
-                let result = Rect::intersect_aabb(
+                let result = Rect::inter_aabb(
                     Vec2::new(0., 0.),
                     Vec2::new(6., 6.),
                     Vec2::from_array(col.1),
                     Vec2::new(4., 4.),
                 );
                 assert!(result.is_none(), "{} collided unexectedly", col.0);
+            }
+        }
+    }
+
+    mod sweep_aabb {
+        use bevy::prelude::Vec2;
+
+        use crate::collisions::{Rect, Sweep};
+
+        #[test]
+        fn detects_collision() {
+            let collisions = [
+                ("left", ([10., 0.], [-10., 0.]), ([5., 0.], 5., [1., 0.])),
+                ("right", ([-10., 0.], [10., 0.]), ([-5., 0.], 5., [-1., 0.])),
+                ("top", ([0., 10.], [0., -10.]), ([0., 5.], 5., [0., 1.])),
+                (
+                    "bottom",
+                    ([0., -10.], [0., 10.]),
+                    ([0., -5.], 5., [0., -1.]),
+                ),
+                ("no move", ([0., 3.], [0., 0.]), ([0., 5.], 0., [1., 0.])),
+            ];
+            for col in collisions {
+                let result = Rect::sweep_aabb(
+                    Vec2::from_array(col.1 .0),
+                    Vec2::new(4., 4.),
+                    Vec2::new(0., 0.),
+                    Vec2::new(6., 6.),
+                    Vec2::from_array(col.1 .1),
+                );
+                let expected_result = Sweep {
+                    position: Vec2::from_array(col.2 .0),
+                    time: col.2 .1,
+                    normal: Vec2::from_array(col.2 .2),
+                };
+                assert_eq!(
+                    result.unwrap(),
+                    expected_result,
+                    "{} collision failed",
+                    col.0
+                );
+            }
+        }
+
+        #[test]
+        fn does_not_detect_collsion() {
+            let collisions = [("miss", ([10., 10.], [-20., 0.]))];
+            for col in collisions {
+                let result = Rect::sweep_aabb(
+                    Vec2::from_array(col.1 .0),
+                    Vec2::new(4., 4.),
+                    Vec2::new(0., 0.),
+                    Vec2::new(6., 6.),
+                    Vec2::from_array(col.1 .1),
+                );
+                assert!(result.is_none(), "{} collision detected", col.0);
             }
         }
     }

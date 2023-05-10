@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use crate::{
-    collisions::{CollisionData, CollisionEvents},
+    collisions::{CollisionData, CollisionEvents, PositionDelta},
     constants::CollisionTypes,
 };
 use bevy::{prelude::*, reflect::TypeUuid};
@@ -12,13 +12,11 @@ impl Plugin for PhysicsPlugin {
         app.add_systems(
             (
                 // rotate_gravity,
-                faller_ground_detection,
                 falling_detection,
+                ground_detection,
                 apply_gravity,
                 apply_acceleration,
                 apply_velocity,
-                top_collision_detection,
-                side_collision_detection,
             )
                 .chain()
                 .in_set(PhysicsSet)
@@ -164,9 +162,17 @@ fn apply_gravity(
     }
 }
 
-fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<FixedTime>) {
-    for (mut transform, velocity) in &mut query {
+fn apply_velocity(
+    mut query: Query<(&mut Transform, &Velocity, Option<&mut PositionDelta>)>,
+    time_step: Res<FixedTime>,
+) {
+    for (mut transform, velocity, delta) in &mut query {
+        let last_translation = transform.translation.truncate();
         transform.translation += velocity.0.extend(0.) * time_step.period.as_secs_f32();
+        if let Some(mut delta) = delta {
+            delta.origin = last_translation;
+            delta.ray = transform.translation.truncate() - last_translation;
+        }
     }
 }
 
@@ -185,44 +191,6 @@ fn apply_acceleration(
 /// marker component for a ray that controls ground collisions
 #[derive(Component)]
 pub struct GroundRay;
-
-// check if falling entities are going to hit the ground
-fn faller_ground_detection(
-    mut jumpers: Query<(
-        &mut JumpState,
-        &Velocity,
-        &mut Transform,
-        &GlobalTransform,
-        &GravityDirection,
-        &mut CollisionEvents<CollisionTypes>,
-    )>,
-    time: Res<FixedTime>,
-) {
-    for (mut j, v, mut t, gt, g, ev) in &mut jumpers {
-        // only check ground detection when moving in the same direction as gravity
-        if g.as_vec2().dot(v.0) < 0.0 || j.on_ground {
-            continue;
-        }
-
-        for event in &ev.buffer {
-            if event.user_type != CollisionTypes::Ground {
-                continue;
-            }
-
-            let CollisionData::Ray(ref ray_data) = event.data else { continue; };
-
-            // calculate time until intersection
-            let speed = g.as_vec2().dot(v.0);
-            let toi = ray_data.toi / speed;
-
-            // if toi is less than a fixed time step
-            if toi < time.period.as_secs_f32() {
-                t.translation = gt.translation() + g.as_vec2().extend(0.0) * ray_data.toi;
-                j.on_ground = true;
-            }
-        }
-    }
-}
 
 // if all ground rays are not on the ground then the entity should be falling
 fn falling_detection(
@@ -256,80 +224,58 @@ fn falling_detection(
     }
 }
 
-
-fn mover_ground_detection(
-    mut movers: Query<(
+// if all ground rays are not on the ground then the entity should be falling
+fn ground_detection(
+    mut jumpers: Query<(
+        &mut JumpState,
+        &mut Transform,
+        &mut Velocity,
+        &mut Acceleration,
         &CollisionEvents<CollisionTypes>,
         &GravityDirection,
-    ), With<JumpState>>
+    )>,
 ) {
-    
-}
-
-fn side_collision_detection(
-    mut movers: Query<
-        (
-            &Velocity,
-            &mut Transform,
-            &GravityDirection,
-            &CollisionEvents<CollisionTypes>,
-        ),
-        With<JumpState>,
-    >,
-    time: Res<FixedTime>,
-) {
-    for (v, mut t, g, ev) in &mut movers {
-        let h_move_vec =
-            (g.forward().as_vec2().dot(v.0) * g.forward().as_vec2()).normalize_or_zero();
-
+    for (mut j, mut t, mut v, mut a, ev, g) in &mut jumpers {
+        let mut touching_ground = false;
+        let mut collision = None;
         for event in &ev.buffer {
-            if let CollisionData::Ray(ref ray_data) = event.data {
-                // only check rays that point in the horizontal direction
-                if event.user_type != CollisionTypes::Ground
-                    || ray_data.ray_direction.perp_dot(h_move_vec) != 0.0
-                {
-                    continue;
-                }
+            // ignore other types of collision other than Aabb collisions
+            let CollisionData::Aabb(ref sweep) = event.data else { continue; };
+            match event.user_type {
+                CollisionTypes::Ground => {
+                    if collision.is_none() {
+                        collision = Some(sweep);
+                    } else {
+                        if sweep.time < collision.unwrap().time {
+                            collision = Some(sweep);
+                        }
+                    }
 
-                let speed = h_move_vec.dot(v.0);
-                let toi = ray_data.toi / speed;
-
-                if toi < time.period.as_secs_f32() {
-                    dbg!("side collision detected");
-                    dbg!(&ray_data.toi);
-                    t.translation += h_move_vec.extend(0.0) * ray_data.toi;
+                    // check if ground collision is a "floor"
+                    if sweep.normal.angle_between(g.reverse().as_vec2()) == 0.0 {
+                        touching_ground = true;
+                    }
                 }
+                _ => {}
             }
         }
-    }
-}
 
-fn top_collision_detection(
-    mut movers: Query<
-        (
-            &mut Velocity,
-            &mut Transform,
-            &GravityDirection,
-            &CollisionEvents<CollisionTypes>,
-        ),
-        With<JumpState>,
-    >,
-    time: Res<FixedTime>,
-) {
-    for (v, mut t, g, ev) in &mut movers {
-        let v_move_vec = g.reverse().as_vec2();
+        if let Some(collision) = collision {
+            // set position outside of ground
+            // note: this would be incorrect if jumper is a child of another transform
+            t.translation = collision.position.extend(t.translation.z);
 
-        for event in &ev.buffer {
-            if event.user_type != CollisionTypes::Ground {
-                continue;
+            // set velocity and acceleration in direction ground to zero
+            if v.0.dot(Vec2::from_angle(PI).rotate(collision.normal)) > 0. {
+                v.0 *= Vec2::from_angle(PI / 2.).rotate(collision.normal).abs();
             }
-            let CollisionData::Ray(ref ray_data) = event.data else { continue; };
-            let speed = v_move_vec.dot(v.0);
-            let toi = ray_data.toi / speed;
-            if toi < time.period.as_secs_f32() {
-                t.translation += v_move_vec.extend(0.0) * (ray_data.toi / 2.);
-                // TODO: set vertical velocity to zero
+            if a.0.dot(Vec2::from_angle(PI).rotate(collision.normal)) > 0. {
+                a.0 *= Vec2::from_angle(PI / 2.).rotate(collision.normal).abs();
             }
+        }
+
+        if touching_ground {
+            j.on_ground = true;
         }
     }
 }

@@ -3,7 +3,7 @@ use bevy_ecs_ldtk::{prelude::LdtkEntityAppExt, LdtkEntity, LdtkLevel, Respawn};
 use leafwing_input_manager::prelude::*;
 
 use crate::{
-    collisions::{RayBundle, CollisionEvents, RectBundle},
+    collisions::{CollisionEvents, PositionDelta, RayBundle, RectBundle},
     constants::{CollisionTypes, PLAYER_DIM},
     game_state::GameState,
     physics::{
@@ -65,8 +65,8 @@ pub struct PlayerBundle {
     jump_state: JumpState,
 }
 
-fn after_player_spawned(mut commands: Commands, q: Query<Entity, Added<Player>>) {
-    for e in &q {
+fn after_player_spawned(mut commands: Commands, q: Query<(Entity, &Transform), Added<Player>>) {
+    for (e, t) in &q {
         commands
             .entity(e)
             .insert((
@@ -89,6 +89,10 @@ fn after_player_spawned(mut commands: Commands, q: Query<Entity, Added<Player>>)
                 },
                 CollisionTypes::Player,
                 CollisionEvents::<CollisionTypes>::new(),
+                PositionDelta {
+                    origin: t.translation.truncate(),
+                    ray: Vec2::ZERO,
+                },
             ))
             .with_children(|children| {
                 // spawn some ray colliders
