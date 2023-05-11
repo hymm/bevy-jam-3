@@ -13,10 +13,10 @@ impl Plugin for PhysicsPlugin {
             (
                 // rotate_gravity,
                 falling_detection,
-                ground_detection,
                 apply_gravity,
                 apply_acceleration,
                 apply_velocity,
+                ground_detection,
             )
                 .chain()
                 .in_set(PhysicsSet)
@@ -261,9 +261,10 @@ fn ground_detection(
         }
 
         if let Some(collision) = collision {
+            dbg!(collision);
             // set position outside of ground
             // note: this would be incorrect if jumper is a child of another transform
-            t.translation = collision.position.extend(t.translation.z);
+            t.translation = (collision.position + collision.normal).extend(t.translation.z);
 
             // set velocity and acceleration in direction ground to zero
             if v.0.dot(Vec2::from_angle(PI).rotate(collision.normal)) > 0. {
