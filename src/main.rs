@@ -18,7 +18,7 @@ use bevy::window::WindowResolution;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ecs_ldtk::LdtkPlugin;
 use bevy_turborand::prelude::*;
-use collisions::{CollisionPlugin, CollisionDebugPlugin};
+use collisions::{CollisionDebugPlugin, CollisionPlugin};
 use constants::CollisionTypes;
 use game_state::GameStatePlugin;
 use ground::GroundPlugin;
@@ -71,8 +71,17 @@ fn main() {
             horizontal_speed: 200.0,
             max_speed: 700.0,
         })
-        .add_startup_system(setup)
-        .run();
+        .add_startup_system(setup);
+
+    // #[cfg(debug_assertions)]
+    // bevy_mod_debugdump::print_main_schedule(&mut app);
+    // let dot = bevy_mod_debugdump::schedule_graph_dot(
+    //     &mut app,
+    //     CoreSchedule::FixedUpdate,
+    //     &bevy_mod_debugdump::schedule_graph::Settings::default(),
+    // );
+    // print!("{dot}");
+    app.run();
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {

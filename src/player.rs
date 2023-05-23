@@ -17,20 +17,22 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(InputManagerPlugin::<JumpAction>::default())
             .add_plugin(InputManagerPlugin::<MovementAction>::default())
-            .add_system(after_player_spawned.in_schedule(OnEnter(GameState::SpawnLevel)))
-            .add_systems(
-                (
-                    control_jump,
-                    control_movement,
-                    sprite_orientation,
-                    player_dies,
-                )
-                    .in_set(GameState::Playing),
+            .configure_set(
+                InputProcessing
+                    .after(CoreSet::PreUpdateFlush)
+                    .before(CoreSet::FixedUpdate),
             )
+            .add_system(after_player_spawned.in_schedule(OnEnter(GameState::SpawnLevel)))
+            .add_systems((control_jump, control_movement).in_base_set(InputProcessing))
+            .add_systems((sprite_orientation, player_dies).in_set(GameState::Playing))
             .add_startup_system(load_player_handle)
             .register_ldtk_entity::<PlayerBundle>("Spawn_Point");
     }
 }
+
+#[derive(SystemSet, Hash, Eq, PartialEq, Clone, Default, Debug)]
+#[system_set(base)]
+struct InputProcessing;
 
 #[derive(Actionlike, PartialEq, Eq, Clone, Copy, Hash, Debug)]
 enum JumpAction {
@@ -133,6 +135,7 @@ fn control_jump(
 ) {
     for (mut v, mut jump_state, mut g, g_dir, action_state) in q.iter_mut() {
         if action_state.just_pressed(JumpAction::Jump) {
+            dbg!("jump pressed");
             if !jump_state.on_ground {
                 return;
             }
