@@ -382,7 +382,7 @@ pub fn check_box_to_box_collisions<T>(
 {
     for [(r1, t1, p1), (r2, t2, p2)] in rects.iter_combinations() {
         if let Ok((mut collision_events, d)) = collision_takers.get_mut(p1.get()) {
-            let PositionDelta { origin, ray } = d.map(|d| *d).unwrap_or(PositionDelta {
+            let PositionDelta { origin, ray } = d.copied().unwrap_or(PositionDelta {
                 origin: t1.translation().truncate(),
                 ray: Vec2::ZERO,
             });

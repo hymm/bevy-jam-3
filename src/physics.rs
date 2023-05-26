@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use crate::{
-    collisions::{CollisionData, CollisionEvents, PositionDelta},
+    collisions::{CollisionData, CollisionEvents, CollisionSets, PositionDelta},
     constants::CollisionTypes,
 };
 use bevy::{prelude::*, reflect::TypeUuid};
@@ -11,16 +11,19 @@ impl Plugin for PhysicsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             (
-                // rotate_gravity,
+                rotate_gravity,
                 falling_detection,
                 apply_gravity,
                 apply_acceleration,
                 apply_velocity,
-                ground_detection,
             )
                 .chain()
                 .in_set(PhysicsSet)
                 .in_schedule(CoreSchedule::FixedUpdate),
+        );
+        app.add_system(
+            ground_detection
+                .in_set(CollisionSets::Consume),
         );
         app.add_startup_system(load_physics);
         app.add_system(monitor_physics_changes);
@@ -237,31 +240,23 @@ fn ground_detection(
 ) {
     for (mut j, mut t, mut v, mut a, ev, g) in &mut jumpers {
         let mut touching_ground = false;
-        let mut collision = None;
+        let mut collision: Option<&crate::collisions::Sweep> = None;
         for event in &ev.buffer {
             // ignore other types of collision other than Aabb collisions
             let CollisionData::Aabb(ref sweep) = event.data else { continue; };
-            match event.user_type {
-                CollisionTypes::Ground => {
-                    if collision.is_none() {
-                        collision = Some(sweep);
-                    } else {
-                        if sweep.time < collision.unwrap().time {
-                            collision = Some(sweep);
-                        }
-                    }
-
-                    // check if ground collision is a "floor"
-                    if sweep.normal.angle_between(g.reverse().as_vec2()) == 0.0 {
-                        touching_ground = true;
-                    }
+            if let CollisionTypes::Ground = event.user_type {
+                if collision.is_none() || sweep.time < collision.unwrap().time{
+                    collision = Some(sweep);
                 }
-                _ => {}
+
+                // check if ground collision is a "floor"
+                if sweep.normal.angle_between(g.reverse().as_vec2()) == 0.0 {
+                    touching_ground = true;
+                }
             }
         }
 
         if let Some(collision) = collision {
-            dbg!(collision);
             // set position outside of ground
             // note: this would be incorrect if jumper is a child of another transform
             t.translation = (collision.position + collision.normal).extend(t.translation.z);

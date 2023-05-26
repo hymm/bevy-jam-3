@@ -135,7 +135,6 @@ fn control_jump(
 ) {
     for (mut v, mut jump_state, mut g, g_dir, action_state) in q.iter_mut() {
         if action_state.just_pressed(JumpAction::Jump) {
-            dbg!("jump pressed");
             if !jump_state.on_ground {
                 return;
             }
