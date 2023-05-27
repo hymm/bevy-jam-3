@@ -67,7 +67,7 @@ trait Shape {}
 
 /// Transform for a Box is the center.
 #[derive(Component, Default)]
-pub struct Rect(Vec2);
+pub struct Rect(pub Vec2);
 impl Shape for Rect {} // TODO: make a derive macro for Shape
 
 #[derive(Bundle, Default)]
@@ -87,7 +87,7 @@ impl RectBundle {
 
 /// `Transform` is the origin of the ray
 #[derive(Component, Default)]
-pub struct Ray(Vec2);
+pub struct Ray(pub Vec2);
 impl Shape for Ray {}
 
 impl Ray {

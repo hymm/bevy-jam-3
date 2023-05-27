@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use crate::{
-    collisions::{CollisionData, CollisionEvents, CollisionSets, PositionDelta},
+    collisions::{CollisionData, CollisionEvents, CollisionSets, PositionDelta, Ray, Rect},
     constants::CollisionTypes,
 };
 use bevy::{prelude::*, reflect::TypeUuid};
@@ -12,7 +12,6 @@ impl Plugin for PhysicsPlugin {
         app.add_systems(
             (
                 rotate_gravity,
-                falling_detection,
                 apply_gravity,
                 apply_acceleration,
                 apply_velocity,
@@ -21,10 +20,7 @@ impl Plugin for PhysicsPlugin {
                 .in_set(PhysicsSet)
                 .in_schedule(CoreSchedule::FixedUpdate),
         );
-        app.add_system(
-            ground_detection
-                .in_set(CollisionSets::Consume),
-        );
+        app.add_systems((ground_detection, falling_detection).in_set(CollisionSets::Consume));
         app.add_startup_system(load_physics);
         app.add_system(monitor_physics_changes);
     }
@@ -245,7 +241,7 @@ fn ground_detection(
             // ignore other types of collision other than Aabb collisions
             let CollisionData::Aabb(ref sweep) = event.data else { continue; };
             if let CollisionTypes::Ground = event.user_type {
-                if collision.is_none() || sweep.time < collision.unwrap().time{
+                if collision.is_none() || sweep.time < collision.unwrap().time {
                     collision = Some(sweep);
                 }
 
@@ -277,15 +273,18 @@ fn ground_detection(
 }
 
 fn rotate_gravity(
-    mut q: Query<(
+    mut movers: Query<(
         &mut GravityDirection,
         &mut JumpState,
         &mut Acceleration,
         &mut Transform,
         &Velocity,
+        &Children,
     )>,
+    mut aabb_colliders: Query<&mut Rect>,
+    mut rays: Query<&mut Ray>,
 ) {
-    for (mut g_dir, mut jump_state, mut a, mut t, v) in &mut q {
+    for (mut g_dir, mut jump_state, mut a, mut t, v, children) in &mut movers {
         let v_speed = g_dir.as_vec2().dot(v.0);
         let current_v_direction = if v_speed > 0.0 {
             g_dir.0
@@ -310,13 +309,26 @@ fn rotate_gravity(
         {
             a.0 = Vec2::ZERO;
             jump_state.turned_this_jump = true;
-            g_dir.0 = if current_h_direction == g_dir.forward() {
+            if current_h_direction == g_dir.forward() {
                 t.rotate_z(-PI / 2.);
-                g_dir.cw()
+                g_dir.0 = g_dir.cw();
             } else {
                 t.rotate_z(PI / 2.);
-                g_dir.ccw()
+                g_dir.0 = g_dir.ccw();
             };
+
+            // rotate colliders
+            for child in children {
+                if let Ok(mut rect) = aabb_colliders.get_mut(*child) {
+                    let y = rect.0.y;
+                    rect.0.y = rect.0.x;
+                    rect.0.x = y;
+                }
+
+                if let Ok(mut ray) = rays.get_mut(*child) {
+                    ray.0 = g_dir.as_vec2() * ray.0.length();
+                }
+            }
         }
 
         jump_state.last_horizontal_movement_dir = current_h_direction;
