@@ -22,7 +22,6 @@ where
     T: Component + Clone,
 {
     fn build(&self, app: &mut bevy::prelude::App) {
-        // TODO: need to repropagate transforms after
         app.configure_sets(
             (
                 CollisionSets::Produce,
@@ -33,7 +32,11 @@ where
                 .in_base_set(CoreSet::PostUpdate)
                 .after(TransformPropagate),
         )
-        .add_system(cleanup_buffers::<T>.before(CollisionSets::Produce))
+        .add_system(
+            cleanup_buffers::<T>
+                .before(CollisionSets::Produce)
+                .in_base_set(CoreSet::PostUpdate),
+        )
         .add_systems(
             (
                 check_ray_to_box_collisions::<T>,
@@ -391,6 +394,22 @@ pub fn check_box_to_box_collisions<T>(
                 collision_events.buffer.push(CollisionEvent {
                     entity: p2.get(),
                     user_type: user_types.get(p2.get()).unwrap().clone(),
+                    data: CollisionData::Aabb(collision),
+                });
+            }
+        }
+
+        // TODO: pull the logic out into another function and just swap the inputs
+        if let Ok((mut collision_events, d)) = collision_takers.get_mut(p2.get()) {
+            let PositionDelta { origin, ray } = d.copied().unwrap_or(PositionDelta {
+                origin: t2.translation().truncate(),
+                ray: Vec2::ZERO,
+            });
+            let collision = Rect::sweep_aabb(origin, r2.0, t1.translation().truncate(), r1.0, ray);
+            if let Some(collision) = collision {
+                collision_events.buffer.push(CollisionEvent {
+                    entity: p1.get(),
+                    user_type: user_types.get(p1.get()).unwrap().clone(),
                     data: CollisionData::Aabb(collision),
                 });
             }
