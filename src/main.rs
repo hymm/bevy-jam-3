@@ -63,7 +63,7 @@ fn main() {
         .add_plugin(WinScreenPlugin)
         .add_plugin(SfxPlugin)
         .add_plugin(CollisionPlugin::<CollisionTypes>::new())
-        // .add_plugin(CollisionDebugPlugin)
+        .add_plugin(CollisionDebugPlugin)
         .insert_resource(PhysicsSettings {
             // these are overridden by the setting.ron
             initial_jump_speed: 400.0,

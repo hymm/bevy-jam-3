@@ -65,7 +65,7 @@ fn level_complete(
     if q.is_empty() && !*skip_level_done {
         if let LevelSelection::Index(index) = *level_selection {
             let (e, h) = ldtk_entity.single();
-            let ldtk = ldtks.get(h).unwrap();
+            let ldtk = ldtks.get(h).unwrap(); // TODO: this line panics on escape sometimes
 
             let (length, _) = ldtk.iter_levels().size_hint();
             if index + 1 < length {

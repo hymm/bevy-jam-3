@@ -7,7 +7,8 @@ use crate::{
     constants::{CollisionTypes, PLAYER_DIM},
     game_state::GameState,
     physics::{
-        Acceleration, Direction, Gravity, GravityDirection, JumpState, PhysicsSettings, Velocity,
+        Acceleration, Direction, Gravity, GravityDirection, JumpState, OnGround, PhysicsSettings,
+        Velocity,
     },
     sfx::SfxHandles,
 };
@@ -64,6 +65,7 @@ pub struct PlayerBundle {
     acceleration: Acceleration,
     g_dir: GravityDirection,
     gravity: Gravity,
+    on_ground: OnGround,
     jump_state: JumpState,
 }
 
@@ -124,6 +126,7 @@ fn load_player_handle(mut commands: Commands, asset_server: Res<AssetServer>) {
 fn control_jump(
     mut q: Query<(
         &mut Velocity,
+        &mut OnGround,
         &mut JumpState,
         &mut Gravity,
         &GravityDirection,
@@ -133,13 +136,13 @@ fn control_jump(
     audio: Res<Audio>,
     sfx: Res<SfxHandles>,
 ) {
-    for (mut v, mut jump_state, mut g, g_dir, action_state) in q.iter_mut() {
+    for (mut v, mut on_ground, mut jump_state, mut g, g_dir, action_state) in q.iter_mut() {
         if action_state.just_pressed(JumpAction::Jump) {
-            if !jump_state.on_ground {
+            if !on_ground.0 {
                 return;
             }
             v.0 -= settings.initial_jump_speed * g_dir.as_vec2();
-            jump_state.on_ground = false;
+            on_ground.0 = false;
             jump_state.turned_this_jump = false;
             audio.play(sfx.jump.clone());
         }
@@ -207,6 +210,7 @@ fn player_dies(
     mut state: ResMut<NextState<GameState>>,
 ) {
     for t in &player {
+        info!("player exists {:?}", t);
         if t.translation.y < -100.
             || t.translation.y > 800.
             || t.translation.x > 800.

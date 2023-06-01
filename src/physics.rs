@@ -79,11 +79,25 @@ impl Direction {
             Direction::Right => Direction::Down,
         }
     }
+
+    pub fn from_vec2(source: Vec2) -> Option<Self> {
+        if source == Vec2::NEG_Y {
+            Some(Direction::Down)
+        } else if source == Vec2::Y {
+            Some(Direction::Up)
+        } else if source == Vec2::NEG_X {
+            Some(Direction::Left)
+        } else if source == Vec2::X {
+            Some(Direction::Right)
+        } else {
+            None
+        }
+    }
 }
 
 /// Direction gravity applies to for a specific object,
 /// Note: might be better for this to be a vector instead?
-#[derive(Component, Deref, DerefMut)]
+#[derive(Component, Deref, DerefMut, Clone, Copy)]
 pub struct GravityDirection(pub Direction);
 impl GravityDirection {
     pub fn forward(&self) -> Direction {
@@ -108,9 +122,12 @@ pub struct Velocity(pub Vec2);
 #[derive(Component, Debug, Default, Deref, DerefMut)]
 pub struct Acceleration(pub Vec2);
 
+/// Controls whether gravity is applied or not
+#[derive(Component, Default)]
+pub struct OnGround(pub bool);
+
 #[derive(Component)]
 pub struct JumpState {
-    pub on_ground: bool,
     pub turned_this_jump: bool,
     pub last_horizontal_movement_dir: Direction,
     pub last_vertical_movement_dir: Direction,
@@ -119,7 +136,6 @@ pub struct JumpState {
 impl Default for JumpState {
     fn default() -> JumpState {
         JumpState {
-            on_ground: false,
             turned_this_jump: false,
             last_horizontal_movement_dir: Direction::Left,
             last_vertical_movement_dir: Direction::Down,
@@ -142,16 +158,16 @@ struct PhysicsSettingsHandle(pub Handle<PhysicsSettings>);
 
 fn apply_gravity(
     mut q: Query<(
+        Entity, 
         &mut Acceleration,
         &mut Velocity,
         &GravityDirection,
         &Gravity,
-        &JumpState,
+        &OnGround,
     )>,
 ) {
-    for (mut a, mut v, dir, gravity, jump_state) in q.iter_mut() {
-        if jump_state.on_ground {
-            // zero velocity in gravity direction.
+    for (e, mut a, mut v, dir, gravity, on_ground) in q.iter_mut() {
+        if on_ground.0 {
             v.0 *= dir.forward().as_vec2().abs();
             a.0 *= dir.forward().as_vec2().abs();
             continue;
@@ -194,13 +210,13 @@ pub struct GroundRay;
 // if all ground rays are not on the ground then the entity should be falling
 fn falling_detection(
     mut jumpers: Query<(
-        &mut JumpState,
+        &mut OnGround,
         &CollisionEvents<CollisionTypes>,
         &GravityDirection,
-    )>,
+    ), With<JumpState>>,
 ) {
-    for (mut j, ev, g) in &mut jumpers {
-        if !j.on_ground {
+    for (mut on_ground, ev, g) in &mut jumpers {
+        if !on_ground.0 {
             continue;
         }
 
@@ -218,15 +234,16 @@ fn falling_detection(
         }
 
         if !touching_ground {
-            j.on_ground = false;
+            on_ground.0 = false;
         }
     }
 }
 
 // if all ground rays are not on the ground then the entity should be falling
-fn ground_detection(
+pub fn ground_detection(
     mut jumpers: Query<(
-        &mut JumpState,
+        Entity,
+        &mut OnGround,
         &mut Transform,
         &mut Velocity,
         &mut Acceleration,
@@ -234,7 +251,7 @@ fn ground_detection(
         &GravityDirection,
     )>,
 ) {
-    for (mut j, mut t, mut v, mut a, ev, g) in &mut jumpers {
+    for (e, mut on_ground, mut t, mut v, mut a, ev, g) in &mut jumpers {
         let mut touching_ground = false;
         let mut collision: Option<&crate::collisions::Sweep> = None;
         for event in &ev.buffer {
@@ -267,7 +284,7 @@ fn ground_detection(
         }
 
         if touching_ground {
-            j.on_ground = true;
+            on_ground.0 = true;
         }
     }
 }

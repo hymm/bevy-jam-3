@@ -303,7 +303,7 @@ fn c_max(a: &RayIntersection, b: &RayIntersection) -> RayIntersection {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RayIntersection {
     /// distance until time of impact
     pub toi: f32,
@@ -322,7 +322,9 @@ pub struct PositionDelta {
 }
 
 pub struct CollisionEvent<T> {
+    // entity that was collided with
     pub entity: Entity,
+    // type T that was stored on entity that was collided with
     pub user_type: T,
     pub data: CollisionData,
 }
@@ -331,6 +333,15 @@ pub struct CollisionEvent<T> {
 pub enum CollisionData {
     Ray(RayIntersection),
     Aabb(Sweep),
+}
+
+impl CollisionData {
+    pub fn normal(&self) -> Vec2 {
+        match self {
+            CollisionData::Ray(ref data) => data.normal,
+            CollisionData::Aabb(ref data) => data.normal,
+        }
+    }
 }
 
 #[derive(Component)]
@@ -542,9 +553,9 @@ mod tests {
                 ("right", ([-10., 0.], [10., 0.]), ([-5., 0.], 5., [-1., 0.])),
                 ("top", ([0., 10.], [0., -10.]), ([0., 5.], 5., [0., 1.])),
                 (
-                    "bottom",
-                    ([0., -10.], [0., 10.]),
-                    ([0., -5.], 5., [0., -1.]),
+                    "bottom",                   // label for assert
+                    ([0., -10.], [0., 10.]),    // (a_pos, delta)
+                    ([0., -5.], 5., [0., -1.]), // expected_result (position, time, normal)
                 ),
                 ("no move", ([0., 3.], [0., 0.]), ([0., 5.], 0., [1., 0.])),
             ];
@@ -571,7 +582,7 @@ mod tests {
         }
 
         #[test]
-        fn does_not_detect_collsion() {
+        fn does_not_detect_collision() {
             let collisions = [("miss", ([10., 10.], [-20., 0.]))];
             for col in collisions {
                 let result = Rect::sweep_aabb(
