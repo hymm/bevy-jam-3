@@ -210,7 +210,6 @@ fn player_dies(
     mut state: ResMut<NextState<GameState>>,
 ) {
     for t in &player {
-        info!("player exists {:?}", t);
         if t.translation.y < -100.
             || t.translation.y > 800.
             || t.translation.x > 800.

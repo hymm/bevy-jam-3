@@ -4,7 +4,7 @@ use crate::physics::Direction;
 use bevy::{
     math::Vec3Swizzles,
     prelude::{
-        Bundle, Color, Component, CoreSet, Entity, GlobalTransform, IntoSystemConfig,
+        info, Bundle, Color, Component, CoreSet, Entity, GlobalTransform, IntoSystemConfig,
         IntoSystemConfigs, IntoSystemSetConfigs, Parent, Plugin, Query, ResMut, SpatialBundle,
         SystemSet, Transform, Vec2, Without,
     },
@@ -287,8 +287,9 @@ pub struct Sweep {
     // hit: Option<AabbIntersection>,
 }
 
+// TODO: figure out if this compiles to something branchless
 fn c_min(a: &RayIntersection, b: &RayIntersection) -> RayIntersection {
-    if a.toi < b.toi {
+    if a.toi < b.toi || (!a.toi.is_nan() && b.toi.is_nan()) {
         a.clone()
     } else {
         b.clone()
@@ -296,7 +297,7 @@ fn c_min(a: &RayIntersection, b: &RayIntersection) -> RayIntersection {
 }
 
 fn c_max(a: &RayIntersection, b: &RayIntersection) -> RayIntersection {
-    if a.toi > b.toi {
+    if a.toi > b.toi || (!a.toi.is_nan() && b.toi.is_nan()) {
         a.clone()
     } else {
         b.clone()
@@ -594,6 +595,19 @@ mod tests {
                 );
                 assert!(result.is_none(), "{} collision detected", col.0);
             }
+        }
+
+        #[test]
+        fn weird_case_causing_nans() {
+            // the y values are the same, but not moving on y axis
+            let result = Rect::sweep_aabb(
+                Vec2::new(288., 372.),
+                Vec2::new(24., 24.),
+                Vec2::new(588., 420.),
+                Vec2::new(72., 72.),
+                Vec2::new(-0.05, 0.0),
+            );
+            assert!(result.is_none());
         }
     }
 }

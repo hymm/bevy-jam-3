@@ -9,8 +9,8 @@ use crate::{game_state::GameState, sfx::SfxHandles};
 pub struct GoalPlugin;
 impl Plugin for GoalPlugin {
     fn build(&self, app: &mut App) {
-        // app.add_system(goal_collision_detection.in_set(CollisionSets::Consume))
-            app.add_system(after_goal_spawned.in_schedule(OnEnter(GameState::SpawnLevel)))
+        app.add_system(goal_collision_detection.in_set(CollisionSets::Consume))
+            .add_system(after_goal_spawned.in_schedule(OnEnter(GameState::SpawnLevel)))
             .add_startup_system(load_goal_images)
             .register_ldtk_entity::<GoalBundle>("Goal");
     }
