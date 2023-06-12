@@ -1,12 +1,12 @@
 use std::marker::PhantomData;
 
-use crate::physics::Direction;
+use crate::physics::{Direction, PhysicsSet};
 use bevy::{
     math::Vec3Swizzles,
     prelude::{
-        info, Bundle, Color, Component, CoreSet, Entity, GlobalTransform, IntoSystemConfig,
-        IntoSystemConfigs, IntoSystemSetConfigs, Parent, Plugin, Query, ResMut, SpatialBundle,
-        SystemSet, Transform, Vec2, Without,
+        App, Bundle, Color, Component, CoreSchedule, CoreSet, Entity, GlobalTransform,
+        IntoSystemConfig, IntoSystemConfigs, IntoSystemSetConfig, IntoSystemSetConfigs, Parent,
+        Plugin, Query, ResMut, Schedule, SpatialBundle, SystemSet, Transform, Vec2, Without,
     },
     transform::{
         systems::{propagate_transforms, sync_simple_transforms},
@@ -22,31 +22,62 @@ where
     T: Component + Clone,
 {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.configure_sets(
-            (
-                CollisionSets::Produce,
-                CollisionSets::Consume,
-                CollisionSets::Repropagate,
+        Self::add_systems_to_fixed_update(app);
+    }
+}
+
+impl<T> CollisionPlugin<T>
+where
+    T: Component + Clone,
+{
+    pub fn add_systems_to_schedule(schedule: &mut Schedule) {
+        schedule
+            .configure_sets(
+                (
+                    CollisionSets::TransformPropagateBefore,
+                    CollisionSets::Produce,
+                    CollisionSets::Consume,
+                    CollisionSets::TransformPropagateAfter,
+                )
+                    .chain()
+                    .in_set(Collision),
             )
-                .chain()
-                .in_base_set(CoreSet::PostUpdate)
-                .after(TransformPropagate),
-        )
-        .add_system(
-            cleanup_buffers::<T>
-                .before(CollisionSets::Produce)
-                .in_base_set(CoreSet::PostUpdate),
-        )
-        .add_systems(
-            (
-                check_ray_to_box_collisions::<T>,
-                check_box_to_box_collisions::<T>,
+            .add_systems(
+                (
+                    propagate_transforms,
+                    sync_simple_transforms,
+                    cleanup_buffers::<T>,
+                )
+                    .in_set(CollisionSets::TransformPropagateBefore),
             )
-                .in_set(CollisionSets::Produce),
-        )
-        .add_systems(
-            (propagate_transforms, sync_simple_transforms).in_set(CollisionSets::Repropagate),
-        );
+            .add_systems(
+                (
+                    check_ray_to_box_collisions::<T>,
+                    check_box_to_box_collisions::<T>,
+                )
+                    .in_set(CollisionSets::Produce),
+            );
+    }
+
+    /// this function shouold be considered to be on user side
+    pub fn add_systems_to_post_update(app: &mut App) {
+        app.edit_schedule(CoreSchedule::Main, |schedule| {
+            Self::add_systems_to_schedule(schedule);
+            schedule.configure_set(
+                Collision
+                    .in_base_set(CoreSet::PostUpdate)
+                    .before(TransformPropagate),
+            );
+        });
+    }
+
+    pub fn add_systems_to_fixed_update(app: &mut App) {
+        app.edit_schedule(CoreSchedule::Main, |schedule| {
+            Self::add_systems_to_schedule(schedule);
+            schedule.configure_set(Collision.after(PhysicsSet));
+
+            schedule.add_systems((propagate_transforms, sync_simple_transforms).after(Collision));
+        });
     }
 }
 
@@ -59,11 +90,21 @@ where
     }
 }
 
+/// overarching set that contains the collision detection systems
+#[derive(SystemSet, Eq, PartialEq, Hash, Debug, Clone)]
+pub struct Collision;
+
 #[derive(SystemSet, Eq, PartialEq, Hash, Debug, Clone)]
 pub enum CollisionSets {
+    /// propagates transforms after physics runs
+    TransformPropagateBefore,
+    /// systems that produce the collision events
     Produce,
+    /// systems that consume the collision events,
+    /// users systems that need to modify the transform
+    /// should go here
     Consume,
-    Repropagate,
+    TransformPropagateAfter,
 }
 
 trait Shape {}
@@ -444,7 +485,7 @@ impl Plugin for CollisionDebugPlugin {
         app.add_plugin(DebugLinesPlugin::default()).add_system(
             draw_collision_shapes
                 .in_base_set(CoreSet::PostUpdate)
-                .after(CollisionSets::Repropagate),
+                .after(Collision),
         );
     }
 }

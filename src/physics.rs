@@ -80,19 +80,19 @@ impl Direction {
         }
     }
 
-    pub fn from_vec2(source: Vec2) -> Option<Self> {
-        if source == Vec2::NEG_Y {
-            Some(Direction::Down)
-        } else if source == Vec2::Y {
-            Some(Direction::Up)
-        } else if source == Vec2::NEG_X {
-            Some(Direction::Left)
-        } else if source == Vec2::X {
-            Some(Direction::Right)
-        } else {
-            None
-        }
-    }
+    // pub fn from_vec2(source: Vec2) -> Option<Self> {
+    //     if source == Vec2::NEG_Y {
+    //         Some(Direction::Down)
+    //     } else if source == Vec2::Y {
+    //         Some(Direction::Up)
+    //     } else if source == Vec2::NEG_X {
+    //         Some(Direction::Left)
+    //     } else if source == Vec2::X {
+    //         Some(Direction::Right)
+    //     } else {
+    //         None
+    //     }
+    // }
 }
 
 /// Direction gravity applies to for a specific object,
@@ -158,7 +158,7 @@ struct PhysicsSettingsHandle(pub Handle<PhysicsSettings>);
 
 fn apply_gravity(
     mut q: Query<(
-        Entity, 
+        Entity,
         &mut Acceleration,
         &mut Velocity,
         &GravityDirection,
@@ -209,11 +209,14 @@ pub struct GroundRay;
 
 // if all ground rays are not on the ground then the entity should be falling
 fn falling_detection(
-    mut jumpers: Query<(
-        &mut OnGround,
-        &CollisionEvents<CollisionTypes>,
-        &GravityDirection,
-    ), With<JumpState>>,
+    mut jumpers: Query<
+        (
+            &mut OnGround,
+            &CollisionEvents<CollisionTypes>,
+            &GravityDirection,
+        ),
+        With<JumpState>,
+    >,
 ) {
     for (mut on_ground, ev, g) in &mut jumpers {
         if !on_ground.0 {
