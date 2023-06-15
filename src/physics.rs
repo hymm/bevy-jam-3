@@ -158,7 +158,6 @@ struct PhysicsSettingsHandle(pub Handle<PhysicsSettings>);
 
 fn apply_gravity(
     mut q: Query<(
-        Entity,
         &mut Acceleration,
         &mut Velocity,
         &GravityDirection,
@@ -166,7 +165,7 @@ fn apply_gravity(
         &OnGround,
     )>,
 ) {
-    for (e, mut a, mut v, dir, gravity, on_ground) in q.iter_mut() {
+    for (mut a, mut v, dir, gravity, on_ground) in q.iter_mut() {
         if on_ground.0 {
             v.0 *= dir.forward().as_vec2().abs();
             a.0 *= dir.forward().as_vec2().abs();
@@ -245,7 +244,6 @@ fn falling_detection(
 // if all ground rays are not on the ground then the entity should be falling
 pub fn ground_detection(
     mut jumpers: Query<(
-        Entity,
         &mut OnGround,
         &mut Transform,
         &mut Velocity,
@@ -254,7 +252,7 @@ pub fn ground_detection(
         &GravityDirection,
     )>,
 ) {
-    for (e, mut on_ground, mut t, mut v, mut a, ev, g) in &mut jumpers {
+    for (mut on_ground, mut t, mut v, mut a, ev, g) in &mut jumpers {
         let mut touching_ground = false;
         let mut collision: Option<&crate::collisions::Sweep> = None;
         for event in &ev.buffer {

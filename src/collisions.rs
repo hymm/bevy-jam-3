@@ -406,8 +406,8 @@ pub fn check_ray_to_box_collisions<T>(
     T: Component + Clone,
 {
     // TODO: need to apply the rotation from the `GlobalTransform` to the ray too. can probably just apply the full affine transformation?
-    for (ray, ray_origin, ray_owner) in &rays {
-        for (rect, rect_center, rect_owner) in &rects {
+    rays.for_each(|(ray, ray_origin, ray_owner)| {
+        rects.for_each(|(rect, rect_center, rect_owner)| {
             if let Ok(mut collision_events) = collision_takers.get_mut(ray_owner.get()) {
                 let collision = Ray::intersect_aabb(
                     ray_origin.translation().xy(),
@@ -423,8 +423,8 @@ pub fn check_ray_to_box_collisions<T>(
                     });
                 }
             }
-        }
-    }
+        });
+    });
 }
 
 // todo: should only check for rects that are interactable? i.e. don't check ground-ground interactions somehow
