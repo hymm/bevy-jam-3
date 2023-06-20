@@ -101,7 +101,7 @@ fn after_falling_ground_spawned(
                 },
             ))
             .with_children(|children| {
-                children.spawn(RectBundle::new(Vec2::new(72.0, 72.0)));
+                children.spawn(RectBundle::new(Vec2::new(71.0, 71.0)));
             });
     }
 }
