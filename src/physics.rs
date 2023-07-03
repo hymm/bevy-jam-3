@@ -80,19 +80,19 @@ impl Direction {
         }
     }
 
-    // pub fn from_vec2(source: Vec2) -> Option<Self> {
-    //     if source == Vec2::NEG_Y {
-    //         Some(Direction::Down)
-    //     } else if source == Vec2::Y {
-    //         Some(Direction::Up)
-    //     } else if source == Vec2::NEG_X {
-    //         Some(Direction::Left)
-    //     } else if source == Vec2::X {
-    //         Some(Direction::Right)
-    //     } else {
-    //         None
-    //     }
-    // }
+    pub fn from_vec2(source: Vec2) -> Option<Self> {
+        if source == Vec2::NEG_Y {
+            Some(Direction::Down)
+        } else if source == Vec2::Y {
+            Some(Direction::Up)
+        } else if source == Vec2::NEG_X {
+            Some(Direction::Left)
+        } else if source == Vec2::X {
+            Some(Direction::Right)
+        } else {
+            None
+        }
+    }
 }
 
 /// Direction gravity applies to for a specific object,
@@ -248,11 +248,12 @@ pub fn ground_detection(
         &mut Transform,
         &mut Velocity,
         &mut Acceleration,
+        Option<&mut JumpState>,
         &CollisionEvents<CollisionTypes>,
         &GravityDirection,
     )>,
 ) {
-    for (mut on_ground, mut t, mut v, mut a, ev, g) in &mut jumpers {
+    for (mut on_ground, mut t, mut v, mut a, jump_state, ev, g) in &mut jumpers {
         let mut touching_ground = false;
         let mut collision: Option<&crate::collisions::Sweep> = None;
         for event in &ev.buffer {
@@ -281,6 +282,13 @@ pub fn ground_detection(
             }
             if a.0.dot(Vec2::from_angle(PI).rotate(collision.normal)) > 0. {
                 a.0 *= Vec2::from_angle(PI / 2.).rotate(collision.normal).abs();
+            }
+
+            if let Some(mut jump_state) = jump_state {
+                if Direction::from_vec2(collision.normal).unwrap() == g.0 {
+                    // skip rotation if we hit a block
+                    jump_state.turned_this_jump = true;
+                }
             }
         }
 
