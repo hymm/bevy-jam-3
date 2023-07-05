@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_ecs_ldtk::{prelude::LdtkEntityAppExt, LdtkEntity, LdtkLevel, Respawn};
-use leafwing_input_manager::prelude::*;
+use leafwing_input_manager::{prelude::*, user_input::InputKind};
 
 use crate::{
     collisions::{CollisionEvents, PositionDelta, RayBundle, RectBundle},
@@ -76,19 +76,44 @@ fn after_player_spawned(mut commands: Commands, q: Query<(Entity, &Transform), A
             .insert((
                 InputManagerBundle::<JumpAction> {
                     action_state: ActionState::default(),
-                    input_map: InputMap::new([(KeyCode::Space, JumpAction::Jump)]),
+                    input_map: InputMap::new([
+                        (InputKind::Keyboard(KeyCode::Space), JumpAction::Jump),
+                        (
+                            InputKind::GamepadButton(GamepadButtonType::South),
+                            JumpAction::Jump,
+                        ),
+                    ]),
                 },
                 InputManagerBundle::<MovementAction> {
                     action_state: ActionState::default(),
                     input_map: InputMap::new([
-                        (KeyCode::A, MovementAction::Left),
-                        (KeyCode::D, MovementAction::Right),
-                        (KeyCode::W, MovementAction::Up),
-                        (KeyCode::S, MovementAction::Down),
-                        (KeyCode::Left, MovementAction::Left),
-                        (KeyCode::Right, MovementAction::Right),
-                        (KeyCode::Up, MovementAction::Up),
-                        (KeyCode::Down, MovementAction::Down),
+                        // wasd
+                        (InputKind::Keyboard(KeyCode::A), MovementAction::Left),
+                        (InputKind::Keyboard(KeyCode::D), MovementAction::Right),
+                        (InputKind::Keyboard(KeyCode::W), MovementAction::Up),
+                        (InputKind::Keyboard(KeyCode::S), MovementAction::Down),
+                        // arrow keys
+                        (InputKind::Keyboard(KeyCode::Left), MovementAction::Left),
+                        (InputKind::Keyboard(KeyCode::Right), MovementAction::Right),
+                        (InputKind::Keyboard(KeyCode::Up), MovementAction::Up),
+                        (InputKind::Keyboard(KeyCode::Down), MovementAction::Down),
+                        // game pad
+                        (
+                            InputKind::GamepadButton(GamepadButtonType::DPadLeft),
+                            MovementAction::Left,
+                        ),
+                        (
+                            InputKind::GamepadButton(GamepadButtonType::DPadRight),
+                            MovementAction::Right,
+                        ),
+                        (
+                            InputKind::GamepadButton(GamepadButtonType::DPadUp),
+                            MovementAction::Up,
+                        ),
+                        (
+                            InputKind::GamepadButton(GamepadButtonType::DPadDown),
+                            MovementAction::Down,
+                        ),
                     ]),
                 },
                 CollisionTypes::Player,
