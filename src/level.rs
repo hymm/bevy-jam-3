@@ -1,21 +1,29 @@
 use crate::{game_state::GameState, goals::Goal};
 use bevy::{asset::LoadState, prelude::*};
-use bevy_ecs_ldtk::{LdtkAsset, LdtkWorldBundle, LevelSelection};
+use bevy_ecs_ldtk::{
+    assets::LdtkProject, prelude::RawLevelAccessor, LdtkProjectHandle, LdtkWorldBundle,
+    LevelSelection,
+};
 
 pub struct LevelPlugin;
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(LevelSelection::Index(0));
+        app.insert_resource(LevelSelection::index(0));
 
-        app.add_system(
-            restart.run_if(in_state(GameState::Playing).or_else(in_state(GameState::WinScreen))),
+        app.add_systems(
+            Update,
+            restart.run_if(in_state(GameState::Playing).or(in_state(GameState::WinScreen))),
         );
 
-        app.add_system(setup_ldtk.in_schedule(OnExit(GameState::StartMenu)))
-            .add_system(check_load_status.run_if(in_state(GameState::LoadLevel)));
+        app.add_systems(OnExit(GameState::StartMenu), setup_ldtk)
+            .add_systems(
+                Update,
+                check_load_status.run_if(in_state(GameState::LoadLevel)),
+            );
 
-        app.add_system(spawn_done.run_if(in_state(GameState::SpawnLevel)));
+        app.add_systems(Update, spawn_done.run_if(in_state(GameState::SpawnLevel)));
         app.add_systems(
+            Update,
             (level_complete, skip_level).distributive_run_if(in_state(GameState::Playing)),
         );
     }
@@ -23,18 +31,21 @@ impl Plugin for LevelPlugin {
 
 fn setup_ldtk(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(LdtkWorldBundle {
-        ldtk_handle: asset_server.load("levels/levels.ldtk"),
+        ldtk_handle: asset_server.load("levels/levels.ldtk").into(),
         ..default()
     });
 }
 
 fn check_load_status(
-    ldtk_handle: Query<&Handle<LdtkAsset>>,
+    ldtk_handle: Query<&LdtkProjectHandle>,
     asset_server: Res<AssetServer>,
     mut state: ResMut<NextState<GameState>>,
 ) {
     let handle = ldtk_handle.single();
-    if asset_server.get_load_state(handle.clone()) != LoadState::Loaded {
+    if matches!(
+        asset_server.get_load_state(handle.clone()).unwrap(),
+        LoadState::Loaded
+    ) {
         return;
     }
 
@@ -48,30 +59,30 @@ fn spawn_done(mut state: ResMut<NextState<GameState>>) {
 fn level_complete(
     mut commands: Commands,
     q: Query<(), With<Goal>>,
-    mut ldtk_events: EventReader<AssetEvent<LdtkAsset>>,
+    mut ldtk_events: EventReader<AssetEvent<LdtkProject>>,
     mut state: ResMut<NextState<GameState>>,
-    ldtk_entity: Query<(Entity, &Handle<LdtkAsset>)>,
-    ldtks: Res<Assets<LdtkAsset>>,
+    ldtk_entity: Query<(Entity, &LdtkProjectHandle)>,
+    ldtks: Res<Assets<LdtkProject>>,
     mut level_selection: ResMut<LevelSelection>,
     mut skip_level_done: Local<bool>,
 ) {
-    for e in &mut ldtk_events {
-        if let AssetEvent::Modified { handle: _ } = e {
+    for e in ldtk_events.read() {
+        if let AssetEvent::Modified { id: _ } = e {
             state.set(GameState::LoadLevel);
             *skip_level_done = true;
             return;
         }
     }
     if q.is_empty() && !*skip_level_done {
-        if let LevelSelection::Index(index) = *level_selection {
+        if let LevelSelection::Indices(index) = *level_selection {
             let (e, h) = ldtk_entity.single();
             let ldtk = ldtks.get(h).unwrap(); // TODO: this line panics on escape sometimes
 
-            let (length, _) = ldtk.iter_levels().size_hint();
-            if index + 1 < length {
+            let (length, _) = ldtk.iter_raw_levels().size_hint();
+            if index.level + 1 < length {
                 // go to next level
                 state.set(GameState::SpawnLevel);
-                *level_selection = LevelSelection::Index(index + 1);
+                *level_selection = LevelSelection::index(index.level + 1);
             } else {
                 // no more levels
                 commands.entity(e).despawn_recursive();
@@ -87,14 +98,14 @@ fn level_complete(
 
 fn restart(
     mut commands: Commands,
-    keyboard: Res<Input<KeyCode>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<NextState<GameState>>,
     mut level: ResMut<LevelSelection>,
-    ldtk: Query<Entity, With<Handle<LdtkAsset>>>,
+    ldtk: Query<Entity, With<LdtkProjectHandle>>,
 ) {
     if keyboard.pressed(KeyCode::Escape) {
         state.set(GameState::StartMenu);
-        *level = LevelSelection::Index(0);
+        *level = LevelSelection::index(0);
         if !ldtk.is_empty() {
             commands.entity(ldtk.single()).despawn_recursive();
         }
@@ -103,22 +114,22 @@ fn restart(
 
 fn skip_level(
     mut commands: Commands,
-    keyboard: Res<Input<KeyCode>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<NextState<GameState>>,
-    ldtk_entity: Query<(Entity, &Handle<LdtkAsset>)>,
-    ldtks: Res<Assets<LdtkAsset>>,
+    ldtk_entity: Query<(Entity, &LdtkProjectHandle)>,
+    ldtks: Res<Assets<LdtkProject>>,
     mut level_selection: ResMut<LevelSelection>,
 ) {
-    if keyboard.just_pressed(KeyCode::Key0) {
-        if let LevelSelection::Index(index) = *level_selection {
+    if keyboard.just_pressed(KeyCode::Digit0) {
+        if let LevelSelection::Indices(index) = *level_selection {
             let (e, h) = ldtk_entity.single();
             let ldtk = ldtks.get(h).unwrap();
 
-            let (length, _) = ldtk.iter_levels().size_hint();
-            if index + 1 < length {
+            let (length, _) = ldtk.iter_raw_levels().size_hint();
+            if index.level + 1 < length {
                 // go to next level
                 state.set(GameState::SpawnLevel);
-                *level_selection = LevelSelection::Index(index + 1);
+                *level_selection = LevelSelection::index(index.level + 1);
             } else {
                 // no more levels
                 commands.entity(e).despawn_recursive();

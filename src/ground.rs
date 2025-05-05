@@ -1,5 +1,5 @@
 use crate::{
-    collisions::{CollisionData, CollisionEvents, CollisionSets, RectBundle, PositionDelta},
+    collisions::{CollisionData, CollisionEvents, CollisionSets, PositionDelta, RectBundle},
     constants::CollisionTypes,
     physics::{Acceleration, Direction, Gravity, GravityDirection, OnGround, Velocity},
     player::Player,
@@ -17,12 +17,12 @@ impl Plugin for GroundPlugin {
     fn build(&self, app: &mut App) {
         app.register_ldtk_int_cell::<GroundBundle>(1)
             .register_ldtk_entity::<FallingGroundBundle>("Falling_Block")
-            .add_startup_system(load_falling_block_sprite)
+            .add_systems(Startup, load_falling_block_sprite)
             .add_systems(
-                (after_ground_spawned, after_falling_ground_spawned)
-                    .in_schedule(OnEnter(GameState::SpawnLevel)),
+                OnEnter(GameState::SpawnLevel),
+                (after_ground_spawned, after_falling_ground_spawned),
             )
-            .add_system(fall_block_after_jump.in_set(CollisionSets::Consume));
+            .add_systems(Update, fall_block_after_jump.in_set(CollisionSets::Consume));
     }
 }
 
@@ -56,8 +56,8 @@ pub struct FallingGround;
 pub struct FallingGroundBundle {
     falling_ground: FallingGround,
     ground: Ground,
-    #[sprite_bundle("falling-block.png")]
-    sprite: SpriteBundle,
+    #[sprite("falling-block.png")]
+    sprite: Sprite,
     g_dir: GravityDirection,
     gravity: Gravity,
     on_ground: OnGround,
@@ -84,7 +84,16 @@ fn load_falling_block_sprite(mut commands: Commands, asset_server: Res<AssetServ
 
 fn after_falling_ground_spawned(
     mut commands: Commands,
-    mut q: Query<(Entity, &Transform, &mut Gravity, &mut GravityDirection, &mut OnGround), Added<FallingGround>>,
+    mut q: Query<
+        (
+            Entity,
+            &Transform,
+            &mut Gravity,
+            &mut GravityDirection,
+            &mut OnGround,
+        ),
+        Added<FallingGround>,
+    >,
 ) {
     for (e, t, mut g, mut g_dir, mut on_ground) in &mut q {
         g.0 = 200.0;
@@ -107,7 +116,14 @@ fn after_falling_ground_spawned(
 }
 
 fn fall_block_after_jump(
-    player_collisions: Query<(&OnGround, &GravityDirection, &CollisionEvents<CollisionTypes>), With<Player>>,
+    player_collisions: Query<
+        (
+            &OnGround,
+            &GravityDirection,
+            &CollisionEvents<CollisionTypes>,
+        ),
+        With<Player>,
+    >,
     mut falling_blocks: Query<
         (&mut OnGround, &mut GravityDirection, &mut PlayerContact),
         (With<FallingGround>, Without<Player>),
@@ -118,10 +134,11 @@ fn fall_block_after_jump(
     if let Ok((on_ground, player_g_dir, player_collisions)) = player_collisions.get_single() {
         if on_ground.0 {
             for collision in &player_collisions.buffer {
-                if let Ok((_, mut g_dir, mut player_contact)) = falling_blocks.get_mut(collision.entity)
+                if let Ok((_, mut g_dir, mut player_contact)) =
+                    falling_blocks.get_mut(collision.entity)
                 {
                     in_contact.push(collision.entity);
-    
+
                     if let CollisionData::Ray(ref data) = collision.data {
                         if data.toi < 2.0 && -collision.data.normal() == player_g_dir.as_vec2() {
                             player_contact.is_in_contact = true;
@@ -129,7 +146,7 @@ fn fall_block_after_jump(
                         }
                     }
                 }
-            }    
+            }
         }
     }
 

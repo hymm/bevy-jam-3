@@ -2,18 +2,19 @@ use std::marker::PhantomData;
 
 use crate::physics::{Direction, PhysicsSet};
 use bevy::{
+    app::{FixedMain, PostUpdate},
+    gizmos::gizmos::Gizmos,
     math::Vec3Swizzles,
     prelude::{
-        App, Bundle, Color, Component, CoreSchedule, CoreSet, Entity, GlobalTransform,
-        IntoSystemConfig, IntoSystemConfigs, IntoSystemSetConfig, IntoSystemSetConfigs, Parent,
-        Plugin, Query, ResMut, Schedule, SpatialBundle, SystemSet, Transform, Vec2, Without,
+        App, Bundle, Color, Component, Entity, GlobalTransform, IntoSystemConfigs,
+        IntoSystemSetConfigs, Parent, Plugin, Query, ResMut, Schedule, SpatialBundle, Srgba,
+        SystemSet, Transform, Vec2, Without,
     },
     transform::{
         systems::{propagate_transforms, sync_simple_transforms},
         TransformSystem::TransformPropagate,
     },
 };
-use bevy_prototype_debug_lines::{DebugLines, DebugLinesPlugin, DebugShapes};
 
 #[derive(Default)]
 pub struct CollisionPlugin<T: Component + Clone>(PhantomData<T>);
@@ -61,20 +62,16 @@ where
 
     /// this function shouold be considered to be on user side
     pub fn add_systems_to_post_update(app: &mut App) {
-        app.edit_schedule(CoreSchedule::Main, |schedule| {
+        app.edit_schedule(PostUpdate, |schedule| {
             Self::add_systems_to_schedule(schedule);
-            schedule.configure_set(
-                Collision
-                    .in_base_set(CoreSet::PostUpdate)
-                    .before(TransformPropagate),
-            );
+            schedule.configure_sets(Collision.before(TransformPropagate));
         });
     }
 
     pub fn add_systems_to_fixed_update(app: &mut App) {
-        app.edit_schedule(CoreSchedule::Main, |schedule| {
+        app.edit_schedule(FixedMain, |schedule| {
             Self::add_systems_to_schedule(schedule);
-            schedule.configure_set(Collision.after(PhysicsSet));
+            schedule.configure_sets(Collision.after(PhysicsSet));
 
             schedule.add_systems((propagate_transforms, sync_simple_transforms).after(Collision));
         });
@@ -406,8 +403,8 @@ pub fn check_ray_to_box_collisions<T>(
     T: Component + Clone,
 {
     // TODO: need to apply the rotation from the `GlobalTransform` to the ray too. can probably just apply the full affine transformation?
-    rays.for_each(|(ray, ray_origin, ray_owner)| {
-        rects.for_each(|(rect, rect_center, rect_owner)| {
+    rays.iter().for_each(|(ray, ray_origin, ray_owner)| {
+        rects.iter().for_each(|(rect, rect_center, rect_owner)| {
             if let Ok(mut collision_events) = collision_takers.get_mut(ray_owner.get()) {
                 let collision = Ray::intersect_aabb(
                     ray_origin.translation().xy(),
@@ -482,35 +479,25 @@ where
 pub struct CollisionDebugPlugin;
 impl Plugin for CollisionDebugPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_plugin(DebugLinesPlugin::default()).add_system(
-            draw_collision_shapes
-                .in_base_set(CoreSet::PostUpdate)
-                .after(Collision),
-        );
+        app.add_systems(PostUpdate, draw_collision_shapes.after(Collision));
     }
 }
 
 fn draw_collision_shapes(
-    mut lines: ResMut<DebugLines>,
-    mut shapes: ResMut<DebugShapes>,
+    mut gizmos: Gizmos,
     rays: Query<(&Ray, &GlobalTransform)>,
     rects: Query<(&Rect, &GlobalTransform)>,
 ) {
     for (r, t) in &rays {
-        lines.line_colored(
-            t.translation(),
-            t.translation() + r.0.extend(0.0),
-            0.0,
-            Color::RED,
+        gizmos.line_2d(
+            t.translation().truncate(),
+            t.translation().truncate() + r.0,
+            Srgba::RED,
         );
     }
 
     for (size, t) in &rects {
-        shapes
-            .rect()
-            .size(size.0)
-            .position(t.translation())
-            .color(Color::RED);
+        gizmos.rect_2d(t.translation().truncate(), size.0, Srgba::RED);
     }
 }
 

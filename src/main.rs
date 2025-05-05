@@ -41,29 +41,26 @@ fn main() {
                 }),
                 ..default()
             })
-            .set(AssetPlugin {
-                watch_for_changes: true,
-                ..default()
-            })
+            .set(AssetPlugin { ..default() })
             .set(ImagePlugin::default_nearest()),
     )
-    .add_plugin(RonAssetPlugin::<PhysicsSettings>::new(&["physics.ron"]))
-    .add_plugin(RngPlugin::default())
-    .insert_resource(FixedTime::new_from_secs(1.0 / 60.0));
+    .add_plugins(RonAssetPlugin::<PhysicsSettings>::new(&["physics.ron"]))
+    .add_plugins(RngPlugin::default())
+    .insert_resource(Time::<Fixed>::from_seconds(1.0 / 50.0));
 
-    app.add_plugin(LdtkPlugin);
+    app.add_plugins(LdtkPlugin);
 
-    app.add_plugin(GameStatePlugin)
-        .add_plugin(GroundPlugin)
-        .add_plugin(StartMenuPlugin)
-        .add_plugin(PhysicsPlugin)
-        .add_plugin(GoalPlugin)
-        .add_plugin(LevelPlugin)
-        .add_plugin(PlayerPlugin)
-        .add_plugin(WinScreenPlugin)
-        .add_plugin(SfxPlugin)
-        .add_plugin(CollisionPlugin::<CollisionTypes>::new())
-        .add_plugin(CollisionDebugPlugin)
+    app.add_plugins(GameStatePlugin)
+        .add_plugins(GroundPlugin)
+        .add_plugins(StartMenuPlugin)
+        .add_plugins(PhysicsPlugin)
+        .add_plugins(GoalPlugin)
+        .add_plugins(LevelPlugin)
+        .add_plugins(PlayerPlugin)
+        .add_plugins(WinScreenPlugin)
+        .add_plugins(SfxPlugin)
+        .add_plugins(CollisionPlugin::<CollisionTypes>::new())
+        .add_plugins(CollisionDebugPlugin)
         .insert_resource(PhysicsSettings {
             // these are overridden by the setting.ron
             initial_jump_speed: 400.0,
@@ -72,7 +69,7 @@ fn main() {
             horizontal_speed: 200.0,
             max_speed: 700.0,
         })
-        .add_startup_system(setup);
+        .add_systems(Startup, setup);
 
     // #[cfg(debug_assertions)]
     // bevy_mod_debugdump::print_main_schedule(&mut app);
@@ -86,15 +83,11 @@ fn main() {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(Camera2dBundle {
-        transform: Transform::from_xyz(360.0, 360.0, 1000.0),
-        ..default()
-    });
+    commands.spawn((Camera2d, Transform::from_xyz(360.0, 360.0, 1000.0)));
 
     // background
-    commands.spawn(SpriteBundle {
-        texture: asset_server.load("bg.png"),
-        transform: Transform::from_xyz(360., 360., 0.),
-        ..default()
-    });
+    commands.spawn((
+        Sprite::from_image(asset_server.load("bg.png")),
+        Transform::from_xyz(360., 360., 0.),
+    ));
 }

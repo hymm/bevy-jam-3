@@ -1,6 +1,8 @@
-use bevy::prelude::*;
-use bevy_ecs_ldtk::{prelude::LdtkEntityAppExt, LdtkEntity, LdtkLevel, Respawn};
-use leafwing_input_manager::{prelude::*, user_input::InputKind};
+use bevy::{app::MainScheduleOrder, ecs::schedule::ScheduleLabel, prelude::*};
+use bevy_ecs_ldtk::{
+    ldtk::Level, prelude::LdtkEntityAppExt, LdtkEntity, LdtkProjectHandle, Respawn,
+};
+use leafwing_input_manager::prelude::*;
 
 use crate::{
     collisions::{CollisionEvents, PositionDelta, RayBundle, RectBundle},
@@ -16,31 +18,32 @@ use crate::{
 pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(InputManagerPlugin::<JumpAction>::default())
-            .add_plugin(InputManagerPlugin::<MovementAction>::default())
-            .configure_set(
-                InputProcessing
-                    .after(CoreSet::PreUpdateFlush)
-                    .before(CoreSet::FixedUpdate),
+        app.init_schedule(InputProcessing);
+        let mut order = app.world_mut().resource_mut::<MainScheduleOrder>();
+        order.insert_after(PreUpdate, InputProcessing);
+
+        app.add_plugins(InputManagerPlugin::<JumpAction>::default())
+            .add_plugins(InputManagerPlugin::<MovementAction>::default())
+            .add_systems(OnEnter(GameState::SpawnLevel), after_player_spawned)
+            .add_systems(InputProcessing, (control_jump, control_movement))
+            .add_systems(
+                Update,
+                (sprite_orientation, player_dies).in_set(GameState::Playing),
             )
-            .add_system(after_player_spawned.in_schedule(OnEnter(GameState::SpawnLevel)))
-            .add_systems((control_jump, control_movement).in_base_set(InputProcessing))
-            .add_systems((sprite_orientation, player_dies).in_set(GameState::Playing))
-            .add_startup_system(load_player_handle)
+            .add_systems(Startup, load_player_handle)
             .register_ldtk_entity::<PlayerBundle>("Spawn_Point");
     }
 }
 
-#[derive(SystemSet, Hash, Eq, PartialEq, Clone, Default, Debug)]
-#[system_set(base)]
+#[derive(ScheduleLabel, Hash, Eq, PartialEq, Clone, Default, Debug)]
 struct InputProcessing;
 
-#[derive(Actionlike, PartialEq, Eq, Clone, Copy, Hash, Debug)]
+#[derive(Actionlike, PartialEq, Eq, Clone, Copy, Hash, Debug, Reflect)]
 enum JumpAction {
     Jump,
 }
 
-#[derive(Actionlike, PartialEq, Eq, Clone, Copy, Hash, Debug)]
+#[derive(Actionlike, PartialEq, Eq, Clone, Copy, Hash, Debug, Reflect)]
 enum MovementAction {
     Left,
     Right,
@@ -56,11 +59,11 @@ pub struct PlayerSprite {
     pub handle: Handle<Image>,
 }
 
-#[derive(Bundle, LdtkEntity)]
+#[derive(Bundle, LdtkEntity, Default)]
 pub struct PlayerBundle {
     player: Player,
-    #[sprite_bundle("pixel-cat.png")]
-    sprite: SpriteBundle,
+    #[sprite("pixel-cat.png")]
+    sprite: Sprite,
     velocity: Velocity,
     acceleration: Acceleration,
     g_dir: GravityDirection,
@@ -76,44 +79,29 @@ fn after_player_spawned(mut commands: Commands, q: Query<(Entity, &Transform), A
             .insert((
                 InputManagerBundle::<JumpAction> {
                     action_state: ActionState::default(),
-                    input_map: InputMap::new([
-                        (InputKind::Keyboard(KeyCode::Space), JumpAction::Jump),
-                        (
-                            InputKind::GamepadButton(GamepadButtonType::South),
-                            JumpAction::Jump,
-                        ),
-                    ]),
+                    input_map: InputMap::new([(JumpAction::Jump, KeyCode::Space)])
+                        .with_multiple([(JumpAction::Jump, GamepadButton::South)]),
                 },
                 InputManagerBundle::<MovementAction> {
                     action_state: ActionState::default(),
                     input_map: InputMap::new([
                         // wasd
-                        (InputKind::Keyboard(KeyCode::A), MovementAction::Left),
-                        (InputKind::Keyboard(KeyCode::D), MovementAction::Right),
-                        (InputKind::Keyboard(KeyCode::W), MovementAction::Up),
-                        (InputKind::Keyboard(KeyCode::S), MovementAction::Down),
+                        (MovementAction::Left, KeyCode::KeyA),
+                        (MovementAction::Right, KeyCode::KeyD),
+                        (MovementAction::Up, KeyCode::KeyW),
+                        (MovementAction::Down, KeyCode::KeyS),
                         // arrow keys
-                        (InputKind::Keyboard(KeyCode::Left), MovementAction::Left),
-                        (InputKind::Keyboard(KeyCode::Right), MovementAction::Right),
-                        (InputKind::Keyboard(KeyCode::Up), MovementAction::Up),
-                        (InputKind::Keyboard(KeyCode::Down), MovementAction::Down),
+                        (MovementAction::Left, KeyCode::ArrowLeft),
+                        (MovementAction::Right, KeyCode::ArrowRight),
+                        (MovementAction::Up, KeyCode::ArrowUp),
+                        (MovementAction::Down, KeyCode::ArrowDown),
+                    ])
+                    .with_multiple([
                         // game pad
-                        (
-                            InputKind::GamepadButton(GamepadButtonType::DPadLeft),
-                            MovementAction::Left,
-                        ),
-                        (
-                            InputKind::GamepadButton(GamepadButtonType::DPadRight),
-                            MovementAction::Right,
-                        ),
-                        (
-                            InputKind::GamepadButton(GamepadButtonType::DPadUp),
-                            MovementAction::Up,
-                        ),
-                        (
-                            InputKind::GamepadButton(GamepadButtonType::DPadDown),
-                            MovementAction::Down,
-                        ),
+                        (MovementAction::Left, GamepadButton::DPadLeft),
+                        (MovementAction::Right, GamepadButton::DPadRight),
+                        (MovementAction::Up, GamepadButton::DPadUp),
+                        (MovementAction::Down, GamepadButton::DPadDown),
                     ]),
                 },
                 CollisionTypes::Player,
@@ -149,6 +137,7 @@ fn load_player_handle(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn control_jump(
+    mut commands: Commands,
     mut q: Query<(
         &mut Velocity,
         &mut OnGround,
@@ -158,21 +147,20 @@ fn control_jump(
         &ActionState<JumpAction>,
     )>,
     settings: Res<PhysicsSettings>,
-    audio: Res<Audio>,
     sfx: Res<SfxHandles>,
 ) {
     for (mut v, mut on_ground, mut jump_state, mut g, g_dir, action_state) in q.iter_mut() {
-        if action_state.just_pressed(JumpAction::Jump) {
+        if action_state.just_pressed(&JumpAction::Jump) {
             if !on_ground.0 {
                 return;
             }
             v.0 -= settings.initial_jump_speed * g_dir.as_vec2();
             on_ground.0 = false;
             jump_state.turned_this_jump = false;
-            audio.play(sfx.jump.clone());
+            commands.spawn(AudioPlayer::new(sfx.jump.clone()));
         }
 
-        g.0 = if action_state.pressed(JumpAction::Jump) {
+        g.0 = if action_state.pressed(&JumpAction::Jump) {
             settings.gravity_pressed
         } else {
             settings.gravity_unpressed
@@ -190,16 +178,16 @@ fn control_movement(
 ) {
     for (mut v, action, dir) in &mut q {
         let mut temp_v = Vec2::ZERO;
-        if action.pressed(MovementAction::Down) {
+        if action.pressed(&MovementAction::Down) {
             temp_v.y -= 1.0;
         }
-        if action.pressed(MovementAction::Up) {
+        if action.pressed(&MovementAction::Up) {
             temp_v.y += 1.0;
         }
-        if action.pressed(MovementAction::Left) {
+        if action.pressed(&MovementAction::Left) {
             temp_v.x -= 1.0;
         }
-        if action.pressed(MovementAction::Right) {
+        if action.pressed(&MovementAction::Right) {
             temp_v.x += 1.0;
         }
 
@@ -227,11 +215,10 @@ fn sprite_orientation(
 }
 
 fn player_dies(
-    player: Query<&Transform, With<Player>>,
     mut commands: Commands,
-    audio: Res<Audio>,
+    player: Query<&Transform, With<Player>>,
     sfx: Res<SfxHandles>,
-    level: Query<Entity, With<Handle<LdtkLevel>>>,
+    level: Query<Entity, With<LdtkProjectHandle>>,
     mut state: ResMut<NextState<GameState>>,
 ) {
     for t in &player {
@@ -240,7 +227,7 @@ fn player_dies(
             || t.translation.x > 800.
             || t.translation.x < -100.
         {
-            audio.play(sfx.death.clone());
+            commands.spawn(AudioPlayer::new(sfx.death.clone()));
             for e in &level {
                 commands.entity(e).insert(Respawn);
             }

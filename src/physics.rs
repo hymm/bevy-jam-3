@@ -4,12 +4,13 @@ use crate::{
     collisions::{CollisionData, CollisionEvents, CollisionSets, PositionDelta, Ray, Rect},
     constants::CollisionTypes,
 };
-use bevy::{prelude::*, reflect::TypeUuid};
+use bevy::prelude::*;
 
 pub struct PhysicsPlugin;
 impl Plugin for PhysicsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
+            FixedUpdate,
             (
                 rotate_gravity,
                 apply_gravity,
@@ -17,12 +18,14 @@ impl Plugin for PhysicsPlugin {
                 apply_velocity,
             )
                 .chain()
-                .in_set(PhysicsSet)
-                .in_schedule(CoreSchedule::FixedUpdate),
+                .in_set(PhysicsSet),
         );
-        app.add_systems((ground_detection, falling_detection).in_set(CollisionSets::Consume));
-        app.add_startup_system(load_physics);
-        app.add_system(monitor_physics_changes);
+        app.add_systems(
+            Update,
+            (ground_detection, falling_detection).in_set(CollisionSets::Consume),
+        );
+        app.add_systems(Startup, load_physics);
+        app.add_systems(Update, monitor_physics_changes);
     }
 }
 
@@ -143,8 +146,7 @@ impl Default for JumpState {
     }
 }
 
-#[derive(Resource, serde::Deserialize, TypeUuid, Debug, Clone)]
-#[uuid = "4393bc64-8efd-422e-b0b3-873d40261987"]
+#[derive(Asset, Resource, serde::Deserialize, TypePath, Debug, Clone)]
 pub struct PhysicsSettings {
     pub initial_jump_speed: f32,
     pub gravity_pressed: f32,
@@ -178,11 +180,11 @@ fn apply_gravity(
 
 fn apply_velocity(
     mut query: Query<(&mut Transform, &Velocity, Option<&mut PositionDelta>)>,
-    time_step: Res<FixedTime>,
+    time_step: Res<Time>,
 ) {
     for (mut transform, velocity, delta) in &mut query {
         let last_translation = transform.translation.truncate();
-        transform.translation += velocity.0.extend(0.) * time_step.period.as_secs_f32();
+        transform.translation += velocity.0.extend(0.) * time_step.delta_secs();
         if let Some(mut delta) = delta {
             delta.origin = last_translation;
             delta.ray = transform.translation.truncate() - last_translation;
@@ -192,12 +194,12 @@ fn apply_velocity(
 
 fn apply_acceleration(
     mut q: Query<(&mut Velocity, &Acceleration)>,
-    time_step: Res<FixedTime>,
+    time_step: Res<Time>,
     settings: Res<PhysicsSettings>,
 ) {
     let max_velocity = Vec2::new(settings.max_speed, settings.max_speed);
     for (mut v, a) in &mut q {
-        v.0 += a.0 * time_step.period.as_secs_f32();
+        v.0 += a.0 * time_step.delta_secs();
         v.0 = v.0.clamp(-max_velocity, max_velocity);
     }
 }
@@ -225,7 +227,9 @@ fn falling_detection(
         let mut touching_ground = false;
 
         for event in &ev.buffer {
-            let CollisionData::Ray(ref ray_data) = event.data else { continue; };
+            let CollisionData::Ray(ref ray_data) = event.data else {
+                continue;
+            };
             // check if ray points "down" and intersects a ground collision
             if event.user_type == CollisionTypes::Ground
                 && ray_data.ray_direction.angle_between(g.as_vec2()) == 0.0
@@ -258,7 +262,9 @@ pub fn ground_detection(
         let mut collision: Option<&crate::collisions::Sweep> = None;
         for event in &ev.buffer {
             // ignore other types of collision other than Aabb collisions
-            let CollisionData::Aabb(ref sweep) = event.data else { continue; };
+            let CollisionData::Aabb(ref sweep) = event.data else {
+                continue;
+            };
             if let CollisionTypes::Ground = event.user_type {
                 if collision.is_none() || sweep.time < collision.unwrap().time {
                     collision = Some(sweep);
@@ -372,10 +378,10 @@ fn monitor_physics_changes(
     mut events: EventReader<AssetEvent<PhysicsSettings>>,
     settings: Res<Assets<PhysicsSettings>>,
 ) {
-    for e in &mut events {
+    for e in events.read() {
         match e {
-            AssetEvent::Created { handle } | AssetEvent::Modified { handle } => {
-                let setting = settings.get(handle).unwrap();
+            AssetEvent::Added { id } | AssetEvent::Modified { id } => {
+                let setting = settings.get(*id).unwrap();
                 commands.insert_resource(setting.clone())
             }
             _ => {}

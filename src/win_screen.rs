@@ -5,8 +5,8 @@ use crate::game_state::GameState;
 pub struct WinScreenPlugin;
 impl Plugin for WinScreenPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(spawn_win_screen.in_schedule(OnEnter(GameState::WinScreen)))
-            .add_system(despawn_win_screen.in_schedule(OnExit(GameState::WinScreen)));
+        app.add_systems(OnEnter(GameState::WinScreen), spawn_win_screen)
+            .add_systems(OnExit(GameState::WinScreen), despawn_win_screen);
     }
 }
 
@@ -16,11 +16,8 @@ struct WinMarker;
 fn spawn_win_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         WinMarker,
-        SpriteBundle {
-            texture: asset_server.load("end-screen.png"),
-            transform: Transform::from_xyz(360., 360., 1.0),
-            ..default()
-        },
+        Sprite::from_image(asset_server.load("end-screen.png")),
+        Transform::from_xyz(360., 360., 1.0),
     ));
 }
 

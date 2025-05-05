@@ -15,10 +15,9 @@ pub enum GameState {
 pub struct GameStatePlugin;
 impl Plugin for GameStatePlugin {
     fn build(&self, app: &mut App) {
-        app.add_state::<GameState>().configure_set(
-            GameState::Playing
-                .in_base_set(CoreSet::Update)
-                .run_if(in_state(GameState::Playing)),
+        app.init_state::<GameState>().configure_sets(
+            Update,
+            GameState::Playing.run_if(in_state(GameState::Playing)),
         );
     }
 }

@@ -9,10 +9,13 @@ use crate::{game_state::GameState, sfx::SfxHandles};
 pub struct GoalPlugin;
 impl Plugin for GoalPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(goal_collision_detection.in_set(CollisionSets::Consume))
-            .add_system(after_goal_spawned.in_schedule(OnEnter(GameState::SpawnLevel)))
-            .add_startup_system(load_goal_images)
-            .register_ldtk_entity::<GoalBundle>("Goal");
+        app.add_systems(
+            Update,
+            goal_collision_detection.in_set(CollisionSets::Consume),
+        )
+        .add_systems(OnEnter(GameState::SpawnLevel), after_goal_spawned)
+        .add_systems(Startup, load_goal_images)
+        .register_ldtk_entity::<GoalBundle>("Goal");
     }
 }
 #[derive(Component, Default)]
@@ -21,8 +24,8 @@ pub struct Goal;
 #[derive(Bundle, LdtkEntity, Default)]
 pub struct GoalBundle {
     goal: Goal,
-    #[sprite_bundle("goal-mouse.png")]
-    sprite: SpriteBundle,
+    #[sprite("goal-mouse.png")]
+    sprite: Sprite,
 }
 
 #[derive(Resource, Default)]
@@ -43,7 +46,7 @@ impl GoalHandles {
 
 fn after_goal_spawned(
     mut commands: Commands,
-    mut q: Query<(Entity, &mut Handle<Image>), With<Goal>>,
+    mut q: Query<(Entity, &mut Sprite), With<Goal>>,
     goal_handles: Res<GoalHandles>,
     mut rand: ResMut<GlobalRng>,
 ) {
@@ -60,21 +63,20 @@ fn after_goal_spawned(
 
         // set a random image
         let index = rand.u8(0..goal_handles.handles.len() as u8) as usize;
-        *h = goal_handles.handles[index].clone()
+        *h = goal_handles.handles[index].clone().into()
     }
 }
 
 fn goal_collision_detection(
     mut commands: Commands,
     mut goals: Query<(Entity, &mut CollisionEvents<CollisionTypes>), With<Goal>>,
-    audio: Res<Audio>,
     sfx: Res<SfxHandles>,
 ) {
     for (entity, mut collision_events) in &mut goals {
         for event in collision_events.buffer.drain(..) {
             if event.user_type == CollisionTypes::Player {
                 commands.entity(entity).despawn_recursive();
-                audio.play(sfx.goal.clone());
+                commands.spawn(AudioPlayer::new(sfx.goal.clone()));
             }
         }
     }
