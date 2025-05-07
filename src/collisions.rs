@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use crate::physics::{Direction, PhysicsSet};
 use bevy::{
-    app::{FixedMain, PostUpdate},
+    app::{FixedMain, FixedUpdate, PostUpdate},
     gizmos::gizmos::Gizmos,
     math::Vec3Swizzles,
     prelude::{
@@ -61,19 +61,22 @@ where
     }
 
     /// this function shouold be considered to be on user side
-    pub fn add_systems_to_post_update(app: &mut App) {
-        app.edit_schedule(PostUpdate, |schedule| {
-            Self::add_systems_to_schedule(schedule);
-            schedule.configure_sets(Collision.before(TransformPropagate));
-        });
-    }
+    // pub fn add_systems_to_post_update(app: &mut App) {
+    //     app.edit_schedule(PostUpdate, |schedule| {
+    //         Self::add_systems_to_schedule(schedule);
+    //         schedule.configure_sets(Collision.before(TransformPropagate));
+    //     });
+    // }
 
     pub fn add_systems_to_fixed_update(app: &mut App) {
-        app.edit_schedule(FixedMain, |schedule| {
+        app.edit_schedule(FixedUpdate, |schedule| {
             Self::add_systems_to_schedule(schedule);
             schedule.configure_sets(Collision.after(PhysicsSet));
 
-            schedule.add_systems((propagate_transforms, sync_simple_transforms).after(Collision));
+            schedule.add_systems(
+                (propagate_transforms, sync_simple_transforms)
+                    .after(CollisionSets::TransformPropagateAfter),
+            );
         });
     }
 }

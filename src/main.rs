@@ -44,41 +44,44 @@ fn main() {
             .set(AssetPlugin { ..default() })
             .set(ImagePlugin::default_nearest()),
     )
-    .add_plugins(RonAssetPlugin::<PhysicsSettings>::new(&["physics.ron"]))
-    .add_plugins(RngPlugin::default())
-    .insert_resource(Time::<Fixed>::from_seconds(1.0 / 50.0));
+    .insert_resource(Time::<Fixed>::from_seconds(1.0 / 50.0))
+    .add_plugins((
+        RonAssetPlugin::<PhysicsSettings>::new(&["physics.ron"]),
+        RngPlugin::default(),
+        LdtkPlugin,
+    ));
 
-    app.add_plugins(LdtkPlugin);
+    app.add_plugins((
+        GameStatePlugin,
+        GroundPlugin,
+        StartMenuPlugin,
+        PhysicsPlugin,
+        GoalPlugin,
+        LevelPlugin,
+        PlayerPlugin,
+        WinScreenPlugin,
+        SfxPlugin,
+        CollisionPlugin::<CollisionTypes>::new(),
+        CollisionDebugPlugin,
+    ))
+    .insert_resource(PhysicsSettings {
+        // these are overridden by the setting.ron
+        initial_jump_speed: 400.0,
+        gravity_pressed: 40.0,
+        gravity_unpressed: 200.0,
+        horizontal_speed: 200.0,
+        max_speed: 700.0,
+    })
+    .add_systems(Startup, setup);
 
-    app.add_plugins(GameStatePlugin)
-        .add_plugins(GroundPlugin)
-        .add_plugins(StartMenuPlugin)
-        .add_plugins(PhysicsPlugin)
-        .add_plugins(GoalPlugin)
-        .add_plugins(LevelPlugin)
-        .add_plugins(PlayerPlugin)
-        .add_plugins(WinScreenPlugin)
-        .add_plugins(SfxPlugin)
-        .add_plugins(CollisionPlugin::<CollisionTypes>::new())
-        .add_plugins(CollisionDebugPlugin)
-        .insert_resource(PhysicsSettings {
-            // these are overridden by the setting.ron
-            initial_jump_speed: 400.0,
-            gravity_pressed: 40.0,
-            gravity_unpressed: 200.0,
-            horizontal_speed: 200.0,
-            max_speed: 700.0,
-        })
-        .add_systems(Startup, setup);
-
-    // #[cfg(debug_assertions)]
-    // bevy_mod_debugdump::print_main_schedule(&mut app);
-    // let dot = bevy_mod_debugdump::schedule_graph_dot(
-    //     &mut app,
-    //     CoreSchedule::FixedUpdate,
-    //     &bevy_mod_debugdump::schedule_graph::Settings::default(),
-    // );
-    // print!("{dot}");
+    #[cfg(debug_assertions)]
+    bevy_mod_debugdump::print_schedule_graph(&mut app, PostUpdate);
+    let dot = bevy_mod_debugdump::schedule_graph_dot(
+        &mut app,
+        FixedUpdate,
+        &bevy_mod_debugdump::schedule_graph::Settings::default(),
+    );
+    print!("{dot}");
     app.run();
 }
 

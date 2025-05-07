@@ -21,7 +21,7 @@ impl Plugin for PhysicsPlugin {
                 .in_set(PhysicsSet),
         );
         app.add_systems(
-            Update,
+            FixedUpdate,
             (ground_detection, falling_detection).in_set(CollisionSets::Consume),
         );
         app.add_systems(Startup, load_physics);
@@ -181,7 +181,9 @@ fn apply_gravity(
 fn apply_velocity(
     mut query: Query<(&mut Transform, &Velocity, Option<&mut PositionDelta>)>,
     time_step: Res<Time>,
+    q2: Query<Entity, With<crate::player::Player>>,
 ) {
+    dbg!(q2.is_empty());
     for (mut transform, velocity, delta) in &mut query {
         let last_translation = transform.translation.truncate();
         transform.translation += velocity.0.extend(0.) * time_step.delta_secs();
