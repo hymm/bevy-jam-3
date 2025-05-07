@@ -2,18 +2,15 @@ use std::marker::PhantomData;
 
 use crate::physics::{Direction, PhysicsSet};
 use bevy::{
-    app::{FixedMain, FixedUpdate, PostUpdate},
+    app::{FixedUpdate, PostUpdate},
     gizmos::gizmos::Gizmos,
     math::Vec3Swizzles,
     prelude::{
-        App, Bundle, Color, Component, Entity, GlobalTransform, IntoSystemConfigs,
-        IntoSystemSetConfigs, Parent, Plugin, Query, ResMut, Schedule, SpatialBundle, Srgba,
-        SystemSet, Transform, Vec2, Without,
+        App, Component, Entity, GlobalTransform, IntoSystemConfigs, IntoSystemSetConfigs, Parent,
+        Plugin, Query, Schedule, Srgba, SystemSet, Transform, Vec2, Without,
     },
-    transform::{
-        systems::{propagate_transforms, sync_simple_transforms},
-        TransformSystem::TransformPropagate,
-    },
+    render::view::Visibility,
+    transform::systems::{propagate_transforms, sync_simple_transforms},
 };
 
 #[derive(Default)]
@@ -111,26 +108,13 @@ trait Shape {}
 
 /// Transform for a Box is the center.
 #[derive(Component, Default)]
+#[require(Transform, Visibility)]
 pub struct Rect(pub Vec2);
 impl Shape for Rect {} // TODO: make a derive macro for Shape
 
-#[derive(Bundle, Default)]
-pub struct RectBundle {
-    rect: Rect,
-    spatial_bundle: SpatialBundle,
-}
-
-impl RectBundle {
-    pub fn new(size: Vec2) -> RectBundle {
-        RectBundle {
-            rect: Rect(size),
-            spatial_bundle: SpatialBundle::default(),
-        }
-    }
-}
-
 /// `Transform` is the origin of the ray
 #[derive(Component, Default)]
+#[require(Transform, Visibility)]
 pub struct Ray(pub Vec2);
 impl Shape for Ray {}
 
@@ -200,24 +184,6 @@ impl Ray {
             // ray collides from inside box
             tmax.point = ray_origin + tmax.toi * ray.0.normalize();
             Some(tmax)
-        }
-    }
-}
-
-#[derive(Bundle, Default)]
-pub struct RayBundle {
-    ray: Ray,
-    spatial_bundle: SpatialBundle,
-}
-
-impl RayBundle {
-    pub fn new(ray: Vec2, origin: Vec2) -> RayBundle {
-        RayBundle {
-            ray: Ray(ray),
-            spatial_bundle: SpatialBundle {
-                transform: Transform::from_translation(origin.extend(0.0)),
-                ..SpatialBundle::default()
-            },
         }
     }
 }

@@ -1,11 +1,9 @@
 use bevy::{app::MainScheduleOrder, ecs::schedule::ScheduleLabel, prelude::*};
-use bevy_ecs_ldtk::{
-    ldtk::Level, prelude::LdtkEntityAppExt, LdtkEntity, LdtkProjectHandle, Respawn,
-};
+use bevy_ecs_ldtk::{prelude::LdtkEntityAppExt, LdtkEntity, LdtkProjectHandle, Respawn};
 use leafwing_input_manager::prelude::*;
 
 use crate::{
-    collisions::{CollisionEvents, PositionDelta, RayBundle, RectBundle},
+    collisions::{CollisionEvents, PositionDelta, Ray},
     constants::{CollisionTypes, PLAYER_DIM},
     game_state::GameState,
     physics::{
@@ -56,6 +54,8 @@ pub struct Player;
 
 #[derive(Resource)]
 pub struct PlayerSprite {
+    // used to keep the player sprite asset loaded
+    #[allow(unused)]
     pub handle: Handle<Image>,
 }
 
@@ -115,17 +115,21 @@ fn after_player_spawned(mut commands: Commands, q: Query<(Entity, &Transform), A
                 // spawn some ray colliders
                 const RAY_LENGTH: f32 = 15.0;
                 // point down
-                children.spawn(RayBundle::new(
-                    Direction::Down.as_vec2() * RAY_LENGTH,
-                    Vec2::new(-PLAYER_DIM.x / 2., -PLAYER_DIM.y / 2.),
+                children.spawn((
+                    Ray(Direction::Down.as_vec2() * RAY_LENGTH),
+                    Transform::from_translation(
+                        Vec2::new(-PLAYER_DIM.x / 2., -PLAYER_DIM.y / 2.).extend(0.0),
+                    ),
                 ));
-                children.spawn(RayBundle::new(
-                    Direction::Down.as_vec2() * RAY_LENGTH,
-                    Vec2::new(PLAYER_DIM.x / 2., -PLAYER_DIM.y / 2.),
+                children.spawn((
+                    Ray(Direction::Down.as_vec2() * RAY_LENGTH),
+                    Transform::from_translation(
+                        Vec2::new(PLAYER_DIM.x / 2., -PLAYER_DIM.y / 2.).extend(0.0),
+                    ),
                 ));
 
                 // spawn hit box used for player collisions with wall and goals
-                children.spawn(RectBundle::new(PLAYER_DIM));
+                children.spawn(Ray(PLAYER_DIM));
             });
     }
 }

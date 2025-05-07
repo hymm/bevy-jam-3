@@ -156,7 +156,10 @@ pub struct PhysicsSettings {
 }
 
 #[derive(Resource)]
-struct PhysicsSettingsHandle(pub Handle<PhysicsSettings>);
+struct PhysicsSettingsHandle(
+    // used to keep the settings asset live
+    #[allow(unused)] pub Handle<PhysicsSettings>,
+);
 
 fn apply_gravity(
     mut q: Query<(
@@ -232,7 +235,7 @@ fn falling_detection(
             };
             // check if ray points "down" and intersects a ground collision
             if event.user_type == CollisionTypes::Ground
-                && ray_data.ray_direction.angle_between(g.as_vec2()) == 0.0
+                && ray_data.ray_direction.angle_to(g.as_vec2()) == 0.0
             {
                 touching_ground = true;
                 break;
@@ -271,7 +274,7 @@ pub fn ground_detection(
                 }
 
                 // check if ground collision is a "floor"
-                if sweep.normal.angle_between(g.reverse().as_vec2()) == 0.0 {
+                if sweep.normal.angle_to(g.reverse().as_vec2()) == 0.0 {
                     touching_ground = true;
                 }
             }

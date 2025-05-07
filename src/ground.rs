@@ -1,5 +1,5 @@
 use crate::{
-    collisions::{CollisionData, CollisionEvents, CollisionSets, PositionDelta, RectBundle},
+    collisions::{CollisionData, CollisionEvents, CollisionSets, PositionDelta, Rect},
     constants::CollisionTypes,
     physics::{Acceleration, Direction, Gravity, GravityDirection, OnGround, Velocity},
     player::Player,
@@ -40,7 +40,7 @@ fn after_ground_spawned(
             .entity(e)
             .insert(CollisionTypes::Ground)
             .with_children(|children| {
-                children.spawn(RectBundle::new(Vec2::new(24.0, 24.0)));
+                children.spawn(Rect(Vec2::new(24.0, 24.0)));
             });
     }
 }
@@ -67,9 +67,11 @@ struct PlayerContact {
     pub is_in_contact: bool,
 }
 
+/// resource to keep the falling block sprite asset alive
 #[derive(Resource)]
 pub struct FallingBlockSprite {
-    pub sprite: Handle<Image>,
+    #[allow(unused)]
+    sprite: Handle<Image>,
 }
 
 fn load_falling_block_sprite(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -106,7 +108,7 @@ fn after_falling_ground_spawned(
                 },
             ))
             .with_children(|children| {
-                children.spawn(RectBundle::new(Vec2::new(71.0, 71.0)));
+                children.spawn(Rect(Vec2::new(71.0, 71.0)));
             });
     }
 }

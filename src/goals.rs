@@ -1,10 +1,10 @@
-use crate::collisions::{CollisionEvents, CollisionSets, RectBundle};
+use crate::collisions::{CollisionEvents, CollisionSets, Rect};
 use crate::constants::CollisionTypes;
 use bevy::prelude::*;
 use bevy_ecs_ldtk::{prelude::LdtkEntityAppExt, LdtkEntity};
 use bevy_turborand::{DelegatedRng, GlobalRng};
 
-use crate::{game_state::GameState, sfx::SfxHandles};
+use crate::sfx::SfxHandles;
 
 pub struct GoalPlugin;
 impl Plugin for GoalPlugin {
@@ -58,7 +58,7 @@ fn after_goal_spawned(
                 CollisionEvents::<CollisionTypes>::new(),
             ))
             .with_children(|children| {
-                children.spawn(RectBundle::new(Vec2::new(15., 15.)));
+                children.spawn(Rect(Vec2::new(15., 15.)));
             });
 
         // set a random image
