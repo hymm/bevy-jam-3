@@ -17,7 +17,10 @@ use bevy::prelude::*;
 use bevy::window::WindowResolution;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ecs_ldtk::LdtkPlugin;
+use bevy_egui::EguiPlugin;
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_turborand::prelude::*;
+
 use collisions::{CollisionDebugPlugin, CollisionPlugin};
 use constants::CollisionTypes;
 use game_state::GameStatePlugin;
@@ -49,6 +52,8 @@ fn main() {
         RonAssetPlugin::<PhysicsSettings>::new(&["physics.ron"]),
         RngPlugin::default(),
         LdtkPlugin,
+        EguiPlugin,
+        WorldInspectorPlugin::new(),
     ));
 
     app.add_plugins((
@@ -75,13 +80,16 @@ fn main() {
     .add_systems(Startup, setup);
 
     #[cfg(debug_assertions)]
-    bevy_mod_debugdump::print_schedule_graph(&mut app, PostUpdate);
-    let dot = bevy_mod_debugdump::schedule_graph_dot(
-        &mut app,
-        FixedUpdate,
-        &bevy_mod_debugdump::schedule_graph::Settings::default(),
-    );
-    print!("{dot}");
+    {
+        bevy_mod_debugdump::print_schedule_graph(&mut app, PostUpdate);
+        let dot = bevy_mod_debugdump::schedule_graph_dot(
+            &mut app,
+            FixedUpdate,
+            &bevy_mod_debugdump::schedule_graph::Settings::default(),
+        );
+        print!("{dot}");
+    }
+
     app.run();
 }
 
