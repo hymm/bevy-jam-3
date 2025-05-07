@@ -13,7 +13,7 @@ impl Plugin for GoalPlugin {
             Update,
             goal_collision_detection.in_set(CollisionSets::Consume),
         )
-        .add_systems(OnEnter(GameState::SpawnLevel), after_goal_spawned)
+        .add_systems(Update, after_goal_spawned)
         .add_systems(Startup, load_goal_images)
         .register_ldtk_entity::<GoalBundle>("Goal");
     }
@@ -46,7 +46,7 @@ impl GoalHandles {
 
 fn after_goal_spawned(
     mut commands: Commands,
-    mut q: Query<(Entity, &mut Sprite), With<Goal>>,
+    mut q: Query<(Entity, &mut Sprite), Added<Goal>>,
     goal_handles: Res<GoalHandles>,
     mut rand: ResMut<GlobalRng>,
 ) {

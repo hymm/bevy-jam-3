@@ -24,7 +24,7 @@ impl Plugin for PlayerPlugin {
 
         app.add_plugins(InputManagerPlugin::<JumpAction>::default())
             .add_plugins(InputManagerPlugin::<MovementAction>::default())
-            .add_systems(OnEnter(GameState::SpawnLevel), after_player_spawned)
+            .add_systems(Update, after_player_spawned)
             .add_systems(InputProcessing, (control_jump, control_movement))
             .add_systems(
                 Update,

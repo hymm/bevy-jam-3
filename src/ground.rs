@@ -10,18 +10,14 @@ use bevy_ecs_ldtk::{
     LdtkEntity, LdtkIntCell,
 };
 
-use crate::game_state::GameState;
-
 pub struct GroundPlugin;
 impl Plugin for GroundPlugin {
     fn build(&self, app: &mut App) {
         app.register_ldtk_int_cell::<GroundBundle>(1)
             .register_ldtk_entity::<FallingGroundBundle>("Falling_Block")
             .add_systems(Startup, load_falling_block_sprite)
-            .add_systems(
-                OnEnter(GameState::SpawnLevel),
-                (after_ground_spawned, after_falling_ground_spawned),
-            )
+            // TODO: make these hooks
+            .add_systems(Update, (after_ground_spawned, after_falling_ground_spawned))
             .add_systems(Update, fall_block_after_jump.in_set(CollisionSets::Consume));
     }
 }
