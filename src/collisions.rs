@@ -2,8 +2,12 @@ use std::marker::PhantomData;
 
 use crate::physics::{Direction, PhysicsSet};
 use bevy::{
-    app::{FixedUpdate, PostUpdate},
-    gizmos::gizmos::Gizmos,
+    app::{FixedUpdate, PostUpdate, Startup},
+    ecs::system::ResMut,
+    gizmos::{
+        config::{DefaultGizmoConfigGroup, GizmoConfigStore},
+        gizmos::Gizmos,
+    },
     math::Vec3Swizzles,
     prelude::{
         App, Component, Entity, GlobalTransform, IntoSystemConfigs, IntoSystemSetConfigs, Parent,
@@ -20,6 +24,7 @@ where
     T: Component + Clone,
 {
     fn build(&self, app: &mut bevy::prelude::App) {
+        app.add_systems(Startup, setup_gizmos);
         Self::add_systems_to_fixed_update(app);
     }
 }
@@ -468,6 +473,11 @@ fn draw_collision_shapes(
     for (size, t) in &rects {
         gizmos.rect_2d(t.translation().truncate(), size.0, Srgba::RED);
     }
+}
+
+fn setup_gizmos(mut config_store: ResMut<GizmoConfigStore>) {
+    let (mut config, _) = config_store.config_mut::<DefaultGizmoConfigGroup>();
+    config.line_width = 0.5;
 }
 
 #[cfg(test)]
