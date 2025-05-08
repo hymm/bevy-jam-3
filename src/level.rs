@@ -1,4 +1,4 @@
-use crate::{game_state::GameState, goals::Goal};
+use crate::{game_state::GameState, goals::Goal, physics::OnGround, player::Player};
 use bevy::{asset::LoadState, prelude::*};
 use bevy_ecs_ldtk::{
     assets::LdtkProject, prelude::RawLevelAccessor, LdtkProjectHandle, LdtkWorldBundle,
@@ -65,6 +65,7 @@ fn level_complete(
     ldtks: Res<Assets<LdtkProject>>,
     mut level_selection: ResMut<LevelSelection>,
     mut skip_level_done: Local<bool>,
+    player_grounded: Query<&OnGround, With<Player>>,
 ) {
     for e in ldtk_events.read() {
         if let AssetEvent::Modified { id: _ } = e {
@@ -73,7 +74,12 @@ fn level_complete(
             return;
         }
     }
-    if q.is_empty() && !*skip_level_done {
+    if q.is_empty()
+        && !*skip_level_done
+        && player_grounded
+            .get_single()
+            .map_or(false, |grounded| grounded.0)
+    {
         if let LevelSelection::Indices(index) = *level_selection {
             let (e, h) = ldtk_entity.single();
             let ldtk = ldtks.get(h).unwrap(); // TODO: this line panics on escape sometimes
