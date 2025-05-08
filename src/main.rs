@@ -16,7 +16,7 @@ use crate::goals::GoalPlugin;
 use bevy::prelude::*;
 use bevy::window::WindowResolution;
 use bevy_common_assets::ron::RonAssetPlugin;
-use bevy_ecs_ldtk::LdtkPlugin;
+use bevy_ecs_ldtk::{LdtkPlugin, LdtkSettings, LevelBackground};
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_turborand::prelude::*;
@@ -48,6 +48,10 @@ fn main() {
             .set(ImagePlugin::default_nearest()),
     )
     .insert_resource(Time::<Fixed>::from_seconds(1.0 / 50.0))
+    .insert_resource(LdtkSettings {
+        level_background: LevelBackground::Nonexistent,
+        ..default()
+    })
     .add_plugins((
         RonAssetPlugin::<PhysicsSettings>::new(&["physics.ron"]),
         RngPlugin::default(),
