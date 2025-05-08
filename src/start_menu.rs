@@ -25,6 +25,7 @@ fn spawn_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
         .spawn((
             MenuMarker,
             Node {
+                height: Val::Percent(100.0),
                 width: Val::Percent(100.0),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,

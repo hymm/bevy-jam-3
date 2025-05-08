@@ -76,7 +76,10 @@ fn goal_collision_detection(
         for event in collision_events.buffer.drain(..) {
             if event.user_type == CollisionTypes::Player {
                 commands.entity(entity).despawn_recursive();
-                commands.spawn(AudioPlayer::new(sfx.goal.clone()));
+                commands.spawn((
+                    AudioPlayer::new(sfx.goal.clone()),
+                    PlaybackSettings::DESPAWN,
+                ));
             }
         }
     }

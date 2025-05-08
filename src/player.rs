@@ -3,7 +3,7 @@ use bevy_ecs_ldtk::{prelude::LdtkEntityAppExt, LdtkEntity, LdtkProjectHandle, Re
 use leafwing_input_manager::prelude::*;
 
 use crate::{
-    collisions::{CollisionEvents, PositionDelta, Ray},
+    collisions::{CollisionEvents, PositionDelta, Ray, Rect},
     constants::{CollisionTypes, PLAYER_DIM},
     game_state::GameState,
     physics::{
@@ -49,7 +49,7 @@ enum MovementAction {
     Down,
 }
 
-#[derive(Component, Default)]
+#[derive(Component, Default, Reflect)]
 pub struct Player;
 
 #[derive(Resource)]
@@ -77,6 +77,7 @@ fn after_player_spawned(mut commands: Commands, q: Query<(Entity, &Transform), A
         commands
             .entity(e)
             .insert((
+                Name::new("Player"),
                 InputManagerBundle::<JumpAction> {
                     action_state: ActionState::default(),
                     input_map: InputMap::new([(JumpAction::Jump, KeyCode::Space)])
@@ -129,7 +130,7 @@ fn after_player_spawned(mut commands: Commands, q: Query<(Entity, &Transform), A
                 ));
 
                 // spawn hit box used for player collisions with wall and goals
-                children.spawn(Ray(PLAYER_DIM));
+                children.spawn(Rect(PLAYER_DIM));
             });
     }
 }
@@ -161,7 +162,10 @@ fn control_jump(
             v.0 -= settings.initial_jump_speed * g_dir.as_vec2();
             on_ground.0 = false;
             jump_state.turned_this_jump = false;
-            commands.spawn(AudioPlayer::new(sfx.jump.clone()));
+            commands.spawn((
+                AudioPlayer::new(sfx.jump.clone()),
+                PlaybackSettings::DESPAWN,
+            ));
         }
 
         g.0 = if action_state.pressed(&JumpAction::Jump) {
@@ -231,7 +235,10 @@ fn player_dies(
             || t.translation.x > 800.
             || t.translation.x < -100.
         {
-            commands.spawn(AudioPlayer::new(sfx.death.clone()));
+            commands.spawn((
+                AudioPlayer::new(sfx.death.clone()),
+                PlaybackSettings::DESPAWN,
+            ));
             for e in &level {
                 commands.entity(e).insert(Respawn);
             }
