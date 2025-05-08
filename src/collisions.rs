@@ -3,15 +3,16 @@ use std::marker::PhantomData;
 use crate::physics::{Direction, PhysicsSet};
 use bevy::{
     app::{FixedUpdate, PostUpdate, Startup},
-    ecs::system::ResMut,
+    ecs::system::{Res, ResMut, Resource},
     gizmos::{
         config::{DefaultGizmoConfigGroup, GizmoConfigStore},
         gizmos::Gizmos,
     },
     math::Vec3Swizzles,
     prelude::{
-        App, Component, Entity, GlobalTransform, IntoSystemConfigs, IntoSystemSetConfigs, Parent,
-        Plugin, Query, Schedule, Srgba, SystemSet, Transform, Vec2, Without,
+        App, Component, Deref, DerefMut, Entity, GlobalTransform, IntoSystemConfigs,
+        IntoSystemSetConfigs, Parent, Plugin, Query, Schedule, Srgba, SystemSet, Transform, Vec2,
+        Without,
     },
     render::view::Visibility,
     transform::systems::{propagate_transforms, sync_simple_transforms},
@@ -24,7 +25,8 @@ where
     T: Component + Clone,
 {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_systems(Startup, setup_gizmos);
+        app.insert_resource(DebugCollisions(false))
+            .add_systems(Startup, setup_gizmos);
         Self::add_systems_to_fixed_update(app);
     }
 }
@@ -453,9 +455,17 @@ where
 pub struct CollisionDebugPlugin;
 impl Plugin for CollisionDebugPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_systems(PostUpdate, draw_collision_shapes.after(Collision));
+        app.add_systems(
+            PostUpdate,
+            draw_collision_shapes
+                .after(Collision)
+                .run_if(|debug: Res<DebugCollisions>| debug.0),
+        );
     }
 }
+
+#[derive(Resource, Deref, DerefMut)]
+pub struct DebugCollisions(bool);
 
 fn draw_collision_shapes(
     mut gizmos: Gizmos,

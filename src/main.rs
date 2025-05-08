@@ -13,15 +13,15 @@ mod start_menu;
 mod win_screen;
 
 use crate::goals::GoalPlugin;
-use bevy::prelude::*;
 use bevy::window::WindowResolution;
+use bevy::{input::common_conditions::input_just_pressed, prelude::*};
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ecs_ldtk::{LdtkPlugin, LdtkSettings, LevelBackground};
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_turborand::prelude::*;
 
-use collisions::{CollisionDebugPlugin, CollisionPlugin};
+use collisions::{CollisionDebugPlugin, CollisionPlugin, DebugCollisions};
 use constants::CollisionTypes;
 use game_state::GameStatePlugin;
 use ground::GroundPlugin;
@@ -57,7 +57,7 @@ fn main() {
         RngPlugin::default(),
         LdtkPlugin,
         EguiPlugin,
-        WorldInspectorPlugin::new(),
+        WorldInspectorPlugin::new().run_if(|condition: Res<DebugCollisions>| **condition),
     ));
 
     app.add_plugins((
@@ -81,7 +81,11 @@ fn main() {
         horizontal_speed: 200.0,
         max_speed: 700.0,
     })
-    .add_systems(Startup, setup);
+    .add_systems(Startup, setup)
+    .add_systems(
+        Update,
+        toggle_debug.run_if(input_just_pressed(KeyCode::Tab)),
+    );
 
     #[cfg(debug_assertions)]
     {
@@ -105,4 +109,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         Sprite::from_image(asset_server.load("bg.png")),
         Transform::from_xyz(360., 360., 0.),
     ));
+}
+
+fn toggle_debug(mut collisions: ResMut<DebugCollisions>) {
+    **collisions = !**collisions;
 }
