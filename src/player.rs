@@ -1,4 +1,5 @@
 use bevy::{app::MainScheduleOrder, ecs::schedule::ScheduleLabel, prelude::*};
+use bevy_aseprite_ultra::prelude::{Animation, AnimationState, AseSpriteAnimation, Aseprite};
 use bevy_ecs_ldtk::{prelude::LdtkEntityAppExt, LdtkEntity, LdtkProjectHandle, Respawn};
 use leafwing_input_manager::prelude::*;
 
@@ -26,7 +27,7 @@ impl Plugin for PlayerPlugin {
             .add_systems(InputProcessing, (control_jump, control_movement))
             .add_systems(
                 Update,
-                (sprite_orientation, player_dies).in_set(GameState::Playing),
+                (sprite_orientation, player_dies, animate_player).in_set(GameState::Playing),
             )
             .add_systems(Startup, load_player_handle)
             .register_ldtk_entity::<PlayerBundle>("Spawn_Point");
@@ -56,7 +57,7 @@ pub struct Player;
 pub struct PlayerSprite {
     // used to keep the player sprite asset loaded
     #[allow(unused)]
-    pub handle: Handle<Image>,
+    pub handle: Handle<Aseprite>,
 }
 
 #[derive(Bundle, LdtkEntity, Default)]
@@ -72,12 +73,20 @@ pub struct PlayerBundle {
     jump_state: JumpState,
 }
 
-fn after_player_spawned(mut commands: Commands, q: Query<(Entity, &Transform), Added<Player>>) {
+fn after_player_spawned(
+    mut commands: Commands,
+    q: Query<(Entity, &Transform), Added<Player>>,
+    asset_server: Res<AssetServer>,
+) {
     for (e, t) in &q {
         commands
             .entity(e)
             .insert((
                 Name::new("Player"),
+                AseSpriteAnimation {
+                    aseprite: asset_server.load("pixel-cat.aseprite"),
+                    animation: Animation::tag("idle"),
+                },
                 InputManagerBundle::<JumpAction> {
                     action_state: ActionState::default(),
                     input_map: InputMap::new([(JumpAction::Jump, KeyCode::Space)])
@@ -137,7 +146,7 @@ fn after_player_spawned(mut commands: Commands, q: Query<(Entity, &Transform), A
 
 fn load_player_handle(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(PlayerSprite {
-        handle: asset_server.load("pixel-cat.png"),
+        handle: asset_server.load("pixel-cat.aseprite"),
     });
 }
 
@@ -207,6 +216,52 @@ fn control_movement(
             v.0 *= dir.as_vec2().abs();
         }
     }
+}
+
+// TODO: consider combining this with the control movement system
+fn animate_player(
+    mut commands: Commands,
+    player: Query<
+        (
+            Entity,
+            Ref<Velocity>,
+            Ref<OnGround>,
+            &mut AseSpriteAnimation,
+        ),
+        With<Player>,
+    >,
+    mut moving: Local<bool>,
+    sprite: Res<PlayerSprite>,
+) {
+    let Ok((player, velocity, on_ground, animation)) = player.get_single() else {
+        return;
+    };
+    let currently_moving = velocity.0.length_squared() > 0.0;
+    if *moving != currently_moving || on_ground.is_changed() {
+        match (currently_moving, on_ground.0) {
+            (true, true) => {
+                // walk
+                commands.entity(player).insert(AseSpriteAnimation {
+                    aseprite: sprite.handle.clone(),
+                    animation: Animation::tag("walk"),
+                });
+            }
+            (false, true) => {
+                // idle
+                commands.entity(player).insert(AseSpriteAnimation {
+                    aseprite: sprite.handle.clone(),
+                    animation: Animation::tag("idle"),
+                });
+            }
+            (true, false) => {
+                // transition to jumping animation
+            }
+            (false, false) => {
+                // do nothing
+            }
+        }
+    }
+    *moving = currently_moving;
 }
 
 fn sprite_orientation(

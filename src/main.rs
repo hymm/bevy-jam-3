@@ -13,8 +13,10 @@ mod start_menu;
 mod win_screen;
 
 use crate::goals::GoalPlugin;
+use bevy::ecs::schedule::{LogLevel, ScheduleBuildSettings};
 use bevy::window::WindowResolution;
 use bevy::{input::common_conditions::input_just_pressed, prelude::*};
+use bevy_aseprite_ultra::AsepriteUltraPlugin;
 use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_ecs_ldtk::{LdtkPlugin, LdtkSettings, LevelBackground};
 use bevy_egui::EguiPlugin;
@@ -56,6 +58,7 @@ fn main() {
         RonAssetPlugin::<PhysicsSettings>::new(&["physics.ron"]),
         RngPlugin::default(),
         LdtkPlugin,
+        AsepriteUltraPlugin,
         EguiPlugin,
         WorldInspectorPlugin::new().run_if(|condition: Res<DebugCollisions>| **condition),
     ));
@@ -98,6 +101,8 @@ fn main() {
         print!("{dot}");
     }
 
+    // configure_ambiguity_detection(app.main_mut());
+
     app.run();
 }
 
@@ -113,4 +118,17 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 fn toggle_debug(mut collisions: ResMut<DebugCollisions>) {
     **collisions = !**collisions;
+}
+
+#[allow(unused)]
+fn configure_ambiguity_detection(sub_app: &mut SubApp) {
+    let mut schedules = sub_app.world_mut().resource_mut::<Schedules>();
+    for (_, schedule) in schedules.iter_mut() {
+        schedule.set_build_settings(ScheduleBuildSettings {
+            // NOTE: you can change this to `LogLevel::Ignore` to easily see the current number of ambiguities.
+            ambiguity_detection: LogLevel::Warn,
+            use_shortnames: false,
+            ..default()
+        });
+    }
 }

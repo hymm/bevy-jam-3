@@ -22,7 +22,9 @@ impl Plugin for PhysicsPlugin {
         );
         app.add_systems(
             FixedUpdate,
-            (ground_detection, falling_detection).in_set(CollisionSets::Consume),
+            (falling_detection, ground_detection)
+                .chain()
+                .in_set(CollisionSets::Consume),
         );
         app.add_systems(Startup, load_physics);
         app.add_systems(Update, monitor_physics_changes);
