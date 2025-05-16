@@ -75,7 +75,7 @@ fn goal_collision_detection(
     for (entity, mut collision_events) in &mut goals {
         for event in collision_events.buffer.drain(..) {
             if event.user_type == CollisionTypes::Player {
-                commands.entity(entity).despawn_recursive();
+                commands.entity(entity).despawn();
                 commands.spawn((
                     AudioPlayer::new(sfx.goal.clone()),
                     PlaybackSettings::DESPAWN,

@@ -1,5 +1,5 @@
 use bevy::{app::MainScheduleOrder, ecs::schedule::ScheduleLabel, prelude::*};
-use bevy_aseprite_ultra::prelude::{Animation, AnimationState, AseSpriteAnimation, Aseprite};
+use bevy_aseprite_ultra::prelude::{Animation, AseAnimation, Aseprite};
 use bevy_ecs_ldtk::{prelude::LdtkEntityAppExt, LdtkEntity, LdtkProjectHandle, Respawn};
 use leafwing_input_manager::prelude::*;
 
@@ -83,37 +83,31 @@ fn after_player_spawned(
             .entity(e)
             .insert((
                 Name::new("Player"),
-                AseSpriteAnimation {
+                AseAnimation {
                     aseprite: asset_server.load("pixel-cat.aseprite"),
                     animation: Animation::tag("idle"),
                 },
-                InputManagerBundle::<JumpAction> {
-                    action_state: ActionState::default(),
-                    input_map: InputMap::new([(JumpAction::Jump, KeyCode::Space)])
-                        .with_multiple([(JumpAction::Jump, GamepadButton::South)]),
-                },
-                InputManagerBundle::<MovementAction> {
-                    action_state: ActionState::default(),
-                    input_map: InputMap::new([
-                        // wasd
-                        (MovementAction::Left, KeyCode::KeyA),
-                        (MovementAction::Right, KeyCode::KeyD),
-                        (MovementAction::Up, KeyCode::KeyW),
-                        (MovementAction::Down, KeyCode::KeyS),
-                        // arrow keys
-                        (MovementAction::Left, KeyCode::ArrowLeft),
-                        (MovementAction::Right, KeyCode::ArrowRight),
-                        (MovementAction::Up, KeyCode::ArrowUp),
-                        (MovementAction::Down, KeyCode::ArrowDown),
-                    ])
-                    .with_multiple([
-                        // game pad
-                        (MovementAction::Left, GamepadButton::DPadLeft),
-                        (MovementAction::Right, GamepadButton::DPadRight),
-                        (MovementAction::Up, GamepadButton::DPadUp),
-                        (MovementAction::Down, GamepadButton::DPadDown),
-                    ]),
-                },
+                InputMap::new([(JumpAction::Jump, KeyCode::Space)])
+                    .with_multiple([(JumpAction::Jump, GamepadButton::South)]),
+                InputMap::new([
+                    // wasd
+                    (MovementAction::Left, KeyCode::KeyA),
+                    (MovementAction::Right, KeyCode::KeyD),
+                    (MovementAction::Up, KeyCode::KeyW),
+                    (MovementAction::Down, KeyCode::KeyS),
+                    // arrow keys
+                    (MovementAction::Left, KeyCode::ArrowLeft),
+                    (MovementAction::Right, KeyCode::ArrowRight),
+                    (MovementAction::Up, KeyCode::ArrowUp),
+                    (MovementAction::Down, KeyCode::ArrowDown),
+                ])
+                .with_multiple([
+                    // game pad
+                    (MovementAction::Left, GamepadButton::DPadLeft),
+                    (MovementAction::Right, GamepadButton::DPadRight),
+                    (MovementAction::Up, GamepadButton::DPadUp),
+                    (MovementAction::Down, GamepadButton::DPadDown),
+                ]),
                 CollisionTypes::Player,
                 CollisionEvents::<CollisionTypes>::new(),
                 PositionDelta {
@@ -225,7 +219,7 @@ fn animate_player(
     mut moving: Local<bool>,
     sprite: Res<PlayerSprite>,
 ) {
-    let Ok((player, velocity, on_ground)) = player.get_single() else {
+    let Ok((player, velocity, on_ground)) = player.single() else {
         return;
     };
     let currently_moving = velocity.0.length_squared() > 0.0;
@@ -233,14 +227,14 @@ fn animate_player(
         match (currently_moving, on_ground.0) {
             (true, true) => {
                 // walk
-                commands.entity(player).try_insert(AseSpriteAnimation {
+                commands.entity(player).try_insert(AseAnimation {
                     aseprite: sprite.handle.clone(),
                     animation: Animation::tag("walk"),
                 });
             }
             (false, true) => {
                 // idle
-                commands.entity(player).try_insert(AseSpriteAnimation {
+                commands.entity(player).try_insert(AseAnimation {
                     aseprite: sprite.handle.clone(),
                     animation: Animation::tag("idle"),
                 });

@@ -129,7 +129,7 @@ fn fall_block_after_jump(
     mut last_in_contact: Local<Vec<Entity>>,
 ) {
     let mut in_contact = Vec::with_capacity(10);
-    if let Ok((on_ground, player_g_dir, player_collisions)) = player_collisions.get_single() {
+    if let Ok((on_ground, player_g_dir, player_collisions)) = player_collisions.single() {
         if on_ground.0 {
             for collision in &player_collisions.buffer {
                 if let Ok((_, mut g_dir, mut player_contact)) =

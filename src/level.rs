@@ -41,7 +41,7 @@ fn check_load_status(
     asset_server: Res<AssetServer>,
     mut state: ResMut<NextState<GameState>>,
 ) {
-    let handle = ldtk_handle.single();
+    let handle = ldtk_handle.single().unwrap();
     if matches!(
         asset_server.get_load_state(handle.clone()).unwrap(),
         LoadState::Loaded
@@ -66,22 +66,22 @@ fn level_complete(
     mut level_selection: ResMut<LevelSelection>,
     mut skip_level_done: Local<bool>,
     player_grounded: Query<&OnGround, With<Player>>,
-) {
+) -> Result {
     for e in ldtk_events.read() {
         if let AssetEvent::Modified { id: _ } = e {
             state.set(GameState::LoadLevel);
             *skip_level_done = true;
-            return;
+            return Ok(());
         }
     }
     if q.is_empty()
         && !*skip_level_done
         && player_grounded
-            .get_single()
+            .single()
             .map_or(false, |grounded| grounded.0)
     {
         if let LevelSelection::Indices(index) = *level_selection {
-            let (e, h) = ldtk_entity.single();
+            let (e, h) = ldtk_entity.single()?;
             let ldtk = ldtks.get(h).unwrap(); // TODO: this line panics on escape sometimes
 
             let (length, _) = ldtk.iter_raw_levels().size_hint();
@@ -91,7 +91,7 @@ fn level_complete(
                 *level_selection = LevelSelection::index(index.level + 1);
             } else {
                 // no more levels
-                commands.entity(e).despawn_recursive();
+                commands.entity(e).despawn();
                 state.set(GameState::WinScreen);
             }
         } else {
@@ -100,6 +100,8 @@ fn level_complete(
     } else if q.is_empty() {
         *skip_level_done = false;
     }
+
+    Ok(())
 }
 
 fn restart(
@@ -108,14 +110,16 @@ fn restart(
     mut state: ResMut<NextState<GameState>>,
     mut level: ResMut<LevelSelection>,
     ldtk: Query<Entity, With<LdtkProjectHandle>>,
-) {
+) -> Result {
     if keyboard.pressed(KeyCode::Escape) {
         state.set(GameState::StartMenu);
         *level = LevelSelection::index(0);
         if !ldtk.is_empty() {
-            commands.entity(ldtk.single()).despawn_recursive();
+            commands.entity(ldtk.single()?).despawn();
         }
     }
+
+    Ok(())
 }
 
 fn skip_level(
@@ -125,11 +129,13 @@ fn skip_level(
     ldtk_entity: Query<(Entity, &LdtkProjectHandle)>,
     ldtks: Res<Assets<LdtkProject>>,
     mut level_selection: ResMut<LevelSelection>,
-) {
+) -> Result {
     if keyboard.just_pressed(KeyCode::Digit0) {
         if let LevelSelection::Indices(index) = *level_selection {
-            let (e, h) = ldtk_entity.single();
-            let ldtk = ldtks.get(h).unwrap();
+            let (e, h) = ldtk_entity.single()?;
+            let ldtk = ldtks
+                .get(h)
+                .ok_or(BevyError::from("Could not get ldtk project"))?;
 
             let (length, _) = ldtk.iter_raw_levels().size_hint();
             if index.level + 1 < length {
@@ -138,11 +144,13 @@ fn skip_level(
                 *level_selection = LevelSelection::index(index.level + 1);
             } else {
                 // no more levels
-                commands.entity(e).despawn_recursive();
+                commands.entity(e).despawn();
                 state.set(GameState::WinScreen);
             }
         } else {
             panic!("Only LevelSelection::Index is supported");
         }
     }
+
+    Ok(())
 }

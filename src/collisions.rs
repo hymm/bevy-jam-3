@@ -3,19 +3,22 @@ use std::marker::PhantomData;
 use crate::physics::{Direction, PhysicsSet};
 use bevy::{
     app::{FixedUpdate, PostUpdate, Startup},
-    ecs::system::{Res, ResMut, Resource},
+    ecs::{
+        resource::Resource,
+        schedule::IntoScheduleConfigs,
+        system::{Res, ResMut},
+    },
     gizmos::{
         config::{DefaultGizmoConfigGroup, GizmoConfigStore},
         gizmos::Gizmos,
     },
     math::Vec3Swizzles,
     prelude::{
-        App, Component, Deref, DerefMut, Entity, GlobalTransform, IntoSystemConfigs,
-        IntoSystemSetConfigs, Parent, Plugin, Query, Schedule, Srgba, SystemSet, Transform, Vec2,
-        Without,
+        App, ChildOf, Component, Deref, DerefMut, Entity, GlobalTransform, Plugin, Query, Schedule,
+        Srgba, SystemSet, Transform, Vec2, Without,
     },
     render::view::Visibility,
-    transform::systems::{propagate_transforms, sync_simple_transforms},
+    transform::systems::{propagate_parent_transforms, sync_simple_transforms},
 };
 
 #[derive(Default)]
@@ -49,7 +52,7 @@ where
             )
             .add_systems(
                 (
-                    propagate_transforms,
+                    propagate_parent_transforms,
                     sync_simple_transforms,
                     cleanup_buffers::<T>,
                 )
@@ -78,7 +81,7 @@ where
             schedule.configure_sets(Collision.after(PhysicsSet));
 
             schedule.add_systems(
-                (propagate_transforms, sync_simple_transforms)
+                (propagate_parent_transforms, sync_simple_transforms)
                     .after(CollisionSets::TransformPropagateAfter),
             );
         });
@@ -371,8 +374,8 @@ impl<T> CollisionEvents<T> {
 }
 
 pub fn check_ray_to_box_collisions<T>(
-    rays: Query<(&Ray, &GlobalTransform, &Parent), Without<Rect>>,
-    rects: Query<(&Rect, &GlobalTransform, &Parent), Without<Ray>>,
+    rays: Query<(&Ray, &GlobalTransform, &ChildOf), Without<Rect>>,
+    rects: Query<(&Rect, &GlobalTransform, &ChildOf), Without<Ray>>,
     mut collision_takers: Query<&mut CollisionEvents<T>>,
     user_types: Query<&T>,
 ) where
@@ -381,7 +384,7 @@ pub fn check_ray_to_box_collisions<T>(
     // TODO: need to apply the rotation from the `GlobalTransform` to the ray too. can probably just apply the full affine transformation?
     rays.iter().for_each(|(ray, ray_origin, ray_owner)| {
         rects.iter().for_each(|(rect, rect_center, rect_owner)| {
-            if let Ok(mut collision_events) = collision_takers.get_mut(ray_owner.get()) {
+            if let Ok(mut collision_events) = collision_takers.get_mut(ray_owner.parent()) {
                 let collision = Ray::intersect_aabb(
                     ray_origin.translation().xy(),
                     ray,
@@ -390,8 +393,8 @@ pub fn check_ray_to_box_collisions<T>(
                 );
                 if let Some(collision) = collision {
                     collision_events.buffer.push(CollisionEvent {
-                        entity: rect_owner.get(),
-                        user_type: user_types.get(rect_owner.get()).unwrap().clone(),
+                        entity: rect_owner.parent(),
+                        user_type: user_types.get(rect_owner.parent()).unwrap().clone(),
                         data: CollisionData::Ray(collision),
                     });
                 }
@@ -403,14 +406,14 @@ pub fn check_ray_to_box_collisions<T>(
 // todo: should only check for rects that are interactable? i.e. don't check ground-ground interactions somehow
 // maybe just need collision layers
 pub fn check_box_to_box_collisions<T>(
-    rects: Query<(&Rect, &GlobalTransform, &Parent)>,
+    rects: Query<(&Rect, &GlobalTransform, &ChildOf)>,
     user_types: Query<&T>,
     mut collision_takers: Query<(&mut CollisionEvents<T>, Option<&PositionDelta>)>,
 ) where
     T: Component + Clone,
 {
     for [(r1, t1, p1), (r2, t2, p2)] in rects.iter_combinations() {
-        if let Ok((mut collision_events, d)) = collision_takers.get_mut(p1.get()) {
+        if let Ok((mut collision_events, d)) = collision_takers.get_mut(p1.parent()) {
             let PositionDelta { origin, ray } = d.copied().unwrap_or(PositionDelta {
                 origin: t1.translation().truncate(),
                 ray: Vec2::ZERO,
@@ -418,15 +421,15 @@ pub fn check_box_to_box_collisions<T>(
             let collision = Rect::sweep_aabb(origin, r1.0, t2.translation().truncate(), r2.0, ray);
             if let Some(collision) = collision {
                 collision_events.buffer.push(CollisionEvent {
-                    entity: p2.get(),
-                    user_type: user_types.get(p2.get()).unwrap().clone(),
+                    entity: p2.parent(),
+                    user_type: user_types.get(p2.parent()).unwrap().clone(),
                     data: CollisionData::Aabb(collision),
                 });
             }
         }
 
         // TODO: pull the logic out into another function and just swap the inputs
-        if let Ok((mut collision_events, d)) = collision_takers.get_mut(p2.get()) {
+        if let Ok((mut collision_events, d)) = collision_takers.get_mut(p2.parent()) {
             let PositionDelta { origin, ray } = d.copied().unwrap_or(PositionDelta {
                 origin: t2.translation().truncate(),
                 ray: Vec2::ZERO,
@@ -434,8 +437,8 @@ pub fn check_box_to_box_collisions<T>(
             let collision = Rect::sweep_aabb(origin, r2.0, t1.translation().truncate(), r1.0, ray);
             if let Some(collision) = collision {
                 collision_events.buffer.push(CollisionEvent {
-                    entity: p1.get(),
-                    user_type: user_types.get(p1.get()).unwrap().clone(),
+                    entity: p1.parent(),
+                    user_type: user_types.get(p1.parent()).unwrap().clone(),
                     data: CollisionData::Aabb(collision),
                 });
             }
@@ -486,8 +489,8 @@ fn draw_collision_shapes(
 }
 
 fn setup_gizmos(mut config_store: ResMut<GizmoConfigStore>) {
-    let (mut config, _) = config_store.config_mut::<DefaultGizmoConfigGroup>();
-    config.line_width = 0.5;
+    let (config, _) = config_store.config_mut::<DefaultGizmoConfigGroup>();
+    config.line.width = 0.5;
 }
 
 #[cfg(test)]

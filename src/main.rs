@@ -59,7 +59,9 @@ fn main() {
         RngPlugin::default(),
         LdtkPlugin,
         AsepriteUltraPlugin,
-        EguiPlugin,
+        EguiPlugin {
+            enable_multipass_for_primary_context: true,
+        },
         WorldInspectorPlugin::new().run_if(|condition: Res<DebugCollisions>| **condition),
     ));
 
