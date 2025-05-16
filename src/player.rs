@@ -221,19 +221,11 @@ fn control_movement(
 // TODO: consider combining this with the control movement system
 fn animate_player(
     mut commands: Commands,
-    player: Query<
-        (
-            Entity,
-            Ref<Velocity>,
-            Ref<OnGround>,
-            &mut AseSpriteAnimation,
-        ),
-        With<Player>,
-    >,
+    player: Query<(Entity, Ref<Velocity>, Ref<OnGround>), With<Player>>,
     mut moving: Local<bool>,
     sprite: Res<PlayerSprite>,
 ) {
-    let Ok((player, velocity, on_ground, animation)) = player.get_single() else {
+    let Ok((player, velocity, on_ground)) = player.get_single() else {
         return;
     };
     let currently_moving = velocity.0.length_squared() > 0.0;
@@ -241,14 +233,14 @@ fn animate_player(
         match (currently_moving, on_ground.0) {
             (true, true) => {
                 // walk
-                commands.entity(player).insert(AseSpriteAnimation {
+                commands.entity(player).try_insert(AseSpriteAnimation {
                     aseprite: sprite.handle.clone(),
                     animation: Animation::tag("walk"),
                 });
             }
             (false, true) => {
                 // idle
-                commands.entity(player).insert(AseSpriteAnimation {
+                commands.entity(player).try_insert(AseSpriteAnimation {
                     aseprite: sprite.handle.clone(),
                     animation: Animation::tag("idle"),
                 });
